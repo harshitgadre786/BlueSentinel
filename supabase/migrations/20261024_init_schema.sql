@@ -1,12 +1,16 @@
--- BlueSentinel Database Schema & Migrations
--- Target: Supabase Postgres with pgvector
--- Idempotent schema definition with Row Level Security (RLS)
+-- ==============================================================================
+-- BlueSentinel Production Database Schema & Security Architecture
+-- Target: Supabase Postgres with pgvector & Supabase Storage
+-- Security Audit Hardening: Strict Row Level Security (RLS) & Storage Isolation
+-- ==============================================================================
 
--- Enable UUID and Vector extensions
+-- 1. EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";
 
--- 1. Profiles Table (linked to auth.users)
+-- 2. CORE TABLES
+
+-- Profiles Table (Private: linked 1:1 to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -17,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   organization TEXT DEFAULT 'Fleet Operations Desk'
 );
 
--- 2. Port Rules Table
+-- Port Rules Table (Public Reference: Read-only for all, write restricted to admin/service-role)
 CREATE TABLE IF NOT EXISTS public.port_rules (
   id TEXT PRIMARY KEY,
   port_name TEXT NOT NULL,
@@ -33,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.port_rules (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Vessels Table
+-- Vessels Table (Public Reference: Read-only for all, write restricted to admin/service-role)
 CREATE TABLE IF NOT EXISTS public.vessels (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -47,10 +51,10 @@ CREATE TABLE IF NOT EXISTS public.vessels (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Voyages Table
+-- Voyages Table (Private: strictly owned by user_id)
 CREATE TABLE IF NOT EXISTS public.voyages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   cargo_type TEXT NOT NULL,
   cargo_quantity_mt NUMERIC NOT NULL,
   origin_port TEXT NOT NULL,
@@ -65,9 +69,10 @@ CREATE TABLE IF NOT EXISTS public.voyages (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Recommendations Table
+-- Recommendations Table (Private: strictly owned by user_id and linked to voyage)
 CREATE TABLE IF NOT EXISTS public.recommendations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   voyage_id UUID REFERENCES public.voyages(id) ON DELETE CASCADE,
   recommended_vessel_id TEXT NOT NULL,
   total_landed_cost_usd NUMERIC NOT NULL,
@@ -80,10 +85,10 @@ CREATE TABLE IF NOT EXISTS public.recommendations (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. Uploaded Documents Table
+-- Uploaded Documents Table (Private: strictly owned by user_id)
 CREATE TABLE IF NOT EXISTS public.uploaded_documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
   file_path TEXT NOT NULL,
   category TEXT NOT NULL, -- 'VESSEL_SPEC', 'PORT_NOTICE', 'CHARTERPARTY', 'TARIFF'
@@ -92,9 +97,10 @@ CREATE TABLE IF NOT EXISTS public.uploaded_documents (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Document Chunks with Vector Embeddings (768 dim for gemini or 1536 dim for openai)
+-- Document Chunks Table (Private: strictly owned by user_id and linked to uploaded document)
 CREATE TABLE IF NOT EXISTS public.document_chunks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   document_id UUID REFERENCES public.uploaded_documents(id) ON DELETE CASCADE,
   page_number INTEGER NOT NULL,
   heading TEXT,
@@ -104,15 +110,15 @@ CREATE TABLE IF NOT EXISTS public.document_chunks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for vector similarity search
 CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx 
 ON public.document_chunks 
 USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 100);
 
--- 8. Reports Table
+-- Reports Table (Private: strictly owned by user_id)
 CREATE TABLE IF NOT EXISTS public.reports (
   id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   voyage_id UUID REFERENCES public.voyages(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   selected_vessel TEXT NOT NULL,
@@ -123,7 +129,11 @@ CREATE TABLE IF NOT EXISTS public.reports (
   generated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable Row Level Security (RLS) on all tables
+-- ==============================================================================
+-- 3. ROW LEVEL SECURITY (RLS) POLICIES
+-- ==============================================================================
+
+-- Enable RLS on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.port_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vessels ENABLE ROW LEVEL SECURITY;
@@ -133,47 +143,294 @@ ALTER TABLE public.uploaded_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.document_chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 
--- Reference Tables: Public read access for port rules, vessels, and document knowledge
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read on port_rules') THEN
-    CREATE POLICY "Allow public read on port_rules" ON public.port_rules FOR SELECT USING (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow write on port_rules') THEN
-    CREATE POLICY "Allow write on port_rules" ON public.port_rules FOR ALL USING (true);
-  END IF;
+-- ------------------------------------------------------------------------------
+-- A. PUBLIC REFERENCE TABLES (port_rules, vessels)
+-- Read: Allowed for authenticated and anon users
+-- Write: Strictly restricted to service_role (admin) only
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Allow public read on port_rules" ON public.port_rules;
+DROP POLICY IF EXISTS "Allow write on port_rules" ON public.port_rules;
+DROP POLICY IF EXISTS "Allow admin write on port_rules" ON public.port_rules;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read on vessels') THEN
-    CREATE POLICY "Allow public read on vessels" ON public.vessels FOR SELECT USING (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow write on vessels') THEN
-    CREATE POLICY "Allow write on vessels" ON public.vessels FOR ALL USING (true);
-  END IF;
+CREATE POLICY "Allow public read on port_rules" 
+ON public.port_rules 
+FOR SELECT 
+USING (true);
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read on document_chunks') THEN
-    CREATE POLICY "Allow public read on document_chunks" ON public.document_chunks FOR SELECT USING (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow write on document_chunks') THEN
-    CREATE POLICY "Allow write on document_chunks" ON public.document_chunks FOR ALL USING (true);
-  END IF;
+CREATE POLICY "Allow admin write on port_rules" 
+ON public.port_rules 
+FOR ALL 
+TO service_role 
+USING (true) 
+WITH CHECK (true);
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on voyages') THEN
-    CREATE POLICY "Allow all on voyages" ON public.voyages FOR ALL USING (true);
-  END IF;
+DROP POLICY IF EXISTS "Allow public read on vessels" ON public.vessels;
+DROP POLICY IF EXISTS "Allow write on vessels" ON public.vessels;
+DROP POLICY IF EXISTS "Allow admin write on vessels" ON public.vessels;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on recommendations') THEN
-    CREATE POLICY "Allow all on recommendations" ON public.recommendations FOR ALL USING (true);
-  END IF;
+CREATE POLICY "Allow public read on vessels" 
+ON public.vessels 
+FOR SELECT 
+USING (true);
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on uploaded_documents') THEN
-    CREATE POLICY "Allow all on uploaded_documents" ON public.uploaded_documents FOR ALL USING (true);
-  END IF;
+CREATE POLICY "Allow admin write on vessels" 
+ON public.vessels 
+FOR ALL 
+TO service_role 
+USING (true) 
+WITH CHECK (true);
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on reports') THEN
-    CREATE POLICY "Allow all on reports" ON public.reports FOR ALL USING (true);
-  END IF;
+-- ------------------------------------------------------------------------------
+-- B. USER PROFILES (profiles)
+-- Only authenticated users can access their own profile row (id = auth.uid())
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Allow users to read and update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Profiles isolation policy" ON public.profiles;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to read and update own profile') THEN
-    CREATE POLICY "Allow users to read and update own profile" ON public.profiles FOR ALL USING (true);
-  END IF;
-END $$;
+CREATE POLICY "Users can only read own profile" 
+ON public.profiles 
+FOR SELECT 
+TO authenticated 
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can only insert own profile" 
+ON public.profiles 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can only update own profile" 
+ON public.profiles 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = id) 
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can only delete own profile" 
+ON public.profiles 
+FOR DELETE 
+TO authenticated 
+USING (auth.uid() = id);
+
+-- ------------------------------------------------------------------------------
+-- C. VOYAGES (voyages)
+-- Strict isolation: user_id = auth.uid(). Anonymous users have NO access.
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Allow all on voyages" ON public.voyages;
+DROP POLICY IF EXISTS "Voyages user isolation" ON public.voyages;
+
+CREATE POLICY "Users can only select own voyages" 
+ON public.voyages 
+FOR SELECT 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only insert own voyages" 
+ON public.voyages 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only update own voyages" 
+ON public.voyages 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only delete own voyages" 
+ON public.voyages 
+FOR DELETE 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- D. RECOMMENDATIONS (recommendations)
+-- Strict isolation: user_id = auth.uid(). Anonymous users have NO access.
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Allow all on recommendations" ON public.recommendations;
+DROP POLICY IF EXISTS "Recommendations user isolation" ON public.recommendations;
+
+CREATE POLICY "Users can only select own recommendations" 
+ON public.recommendations 
+FOR SELECT 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only insert own recommendations" 
+ON public.recommendations 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only update own recommendations" 
+ON public.recommendations 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only delete own recommendations" 
+ON public.recommendations 
+FOR DELETE 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- E. UPLOADED DOCUMENTS (uploaded_documents)
+-- Strict isolation: user_id = auth.uid(). Anonymous users have NO access.
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Allow all on uploaded_documents" ON public.uploaded_documents;
+DROP POLICY IF EXISTS "Uploaded documents user isolation" ON public.uploaded_documents;
+
+CREATE POLICY "Users can only select own uploaded documents" 
+ON public.uploaded_documents 
+FOR SELECT 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only insert own uploaded documents" 
+ON public.uploaded_documents 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only update own uploaded documents" 
+ON public.uploaded_documents 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only delete own uploaded documents" 
+ON public.uploaded_documents 
+FOR DELETE 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- F. DOCUMENT CHUNKS (document_chunks)
+-- Strict isolation: user_id = auth.uid(). Anonymous users have NO access.
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Allow public read on document_chunks" ON public.document_chunks;
+DROP POLICY IF EXISTS "Allow write on document_chunks" ON public.document_chunks;
+DROP POLICY IF EXISTS "Document chunks user isolation" ON public.document_chunks;
+
+CREATE POLICY "Users can only select own document chunks" 
+ON public.document_chunks 
+FOR SELECT 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only insert own document chunks" 
+ON public.document_chunks 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only update own document chunks" 
+ON public.document_chunks 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only delete own document chunks" 
+ON public.document_chunks 
+FOR DELETE 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- G. REPORTS (reports)
+-- Strict isolation: user_id = auth.uid(). Anonymous users have NO access.
+-- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Allow all on reports" ON public.reports;
+DROP POLICY IF EXISTS "Reports user isolation" ON public.reports;
+
+CREATE POLICY "Users can only select own reports" 
+ON public.reports 
+FOR SELECT 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only insert own reports" 
+ON public.reports 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only update own reports" 
+ON public.reports 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can only delete own reports" 
+ON public.reports 
+FOR DELETE 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+-- ==============================================================================
+-- 4. SUPABASE STORAGE SECURITY & BUCKET ISOLATION
+-- Bucket: documents (private)
+-- Policy: Only authenticated users can access objects under their own user folder:
+--         "documents/{auth.uid()}/*"
+-- ==============================================================================
+
+-- Create private bucket if not exists
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('documents', 'documents', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+-- Clean existing storage policies for documents bucket
+DROP POLICY IF EXISTS "User can read own storage files" ON storage.objects;
+DROP POLICY IF EXISTS "User can upload to own storage folder" ON storage.objects;
+DROP POLICY IF EXISTS "User can update own storage files" ON storage.objects;
+DROP POLICY IF EXISTS "User can delete own storage files" ON storage.objects;
+
+-- Storage Policy: SELECT (Read only files in user's folder)
+CREATE POLICY "User can read own storage files" 
+ON storage.objects 
+FOR SELECT 
+TO authenticated 
+USING (
+  bucket_id = 'documents' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Storage Policy: INSERT (Upload only files inside user's folder)
+CREATE POLICY "User can upload to own storage folder" 
+ON storage.objects 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (
+  bucket_id = 'documents' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Storage Policy: UPDATE (Modify only files in user's folder)
+CREATE POLICY "User can update own storage files" 
+ON storage.objects 
+FOR UPDATE 
+TO authenticated 
+USING (
+  bucket_id = 'documents' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+) 
+WITH CHECK (
+  bucket_id = 'documents' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Storage Policy: DELETE (Remove only files in user's folder)
+CREATE POLICY "User can delete own storage files" 
+ON storage.objects 
+FOR DELETE 
+TO authenticated 
+USING (
+  bucket_id = 'documents' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);

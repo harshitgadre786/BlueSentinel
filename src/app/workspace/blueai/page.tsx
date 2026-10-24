@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import WorkspaceNav from "@/components/WorkspaceNav";
+import { useAuth } from "@/context/AuthContext";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase-client";
 import { RAGDocument } from "@/lib/types";
 import { PRELOADED_DOCUMENTS } from "@/lib/rag-knowledge-base";
 import { queryBlueAICopilot, EvidenceCitation } from "@/lib/blueai-copilot";
@@ -21,6 +23,7 @@ import {
 } from "lucide-react";
 
 export default function BlueAIPage() {
+  const { user } = useAuth();
   const [documents, setDocuments] = useState<RAGDocument[]>(PRELOADED_DOCUMENTS);
   const [selectedDoc, setSelectedDoc] = useState<RAGDocument | null>(PRELOADED_DOCUMENTS[0]);
   const [queryText, setQueryText] = useState("");
@@ -91,13 +94,13 @@ Every answer I deliver is cross-referenced with exact **filename** and **page nu
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadStatus("Uploading to Supabase Storage & vectorizing chunks...");
+    setUploadStatus("Extracting chunks and enforcing user-level storage isolation...");
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const text = (event.target?.result as string) || "";
       const lines = text.split("\n").filter((l) => l.trim().length > 0);
       const chunks = [];
@@ -124,6 +127,52 @@ Every answer I deliver is cross-referenced with exact **filename** and **page nu
         });
       }
 
+      // If user is authenticated and Supabase is configured, enforce isolated storage folder path
+      let userFolderStoragePath = "";
+      if (user && !user.isDemo && isSupabaseConfigured && supabase) {
+        try {
+          const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          userFolderStoragePath = `${user.id}/${Date.now()}_${sanitizedFilename}`;
+
+          // Upload to Supabase Storage isolated under documents/{user_id}/*
+          await supabase.storage.from("documents").upload(userFolderStoragePath, file, {
+            upsert: false,
+          });
+
+          // Insert document record linked to user_id
+          const { data: docRecord } = await supabase
+            .from("uploaded_documents")
+            .insert([
+              {
+                user_id: user.id,
+                filename: file.name,
+                file_path: userFolderStoragePath,
+                category: "CHARTERPARTY",
+                size_bytes: file.size,
+                page_count: chunks.length,
+              },
+            ])
+            .select()
+            .single();
+
+          if (docRecord?.id) {
+            // Insert document chunks linked to user_id
+            await supabase.from("document_chunks").insert(
+              chunks.map((c) => ({
+                user_id: user.id,
+                document_id: docRecord.id,
+                page_number: c.pageNumber,
+                heading: c.heading,
+                content: c.text,
+                keywords: c.keywords,
+              }))
+            );
+          }
+        } catch {
+          // If network or storage bucket issue, continue in local state
+        }
+      }
+
       const newDoc: RAGDocument = {
         id: "doc_user_" + Date.now(),
         title: file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "),
@@ -136,8 +185,12 @@ Every answer I deliver is cross-referenced with exact **filename** and **page nu
 
       setDocuments((prev) => [newDoc, ...prev]);
       setSelectedDoc(newDoc);
-      setUploadStatus(`Extracted ${chunks.length} vectorized chunks with page metadata.`);
-      setTimeout(() => setUploadStatus(null), 4000);
+      if (userFolderStoragePath) {
+        setUploadStatus(`Isolated in private folder: ${userFolderStoragePath.slice(0, 18)}... (${chunks.length} pages)`);
+      } else {
+        setUploadStatus(`Parsed ${chunks.length} vectorized chunks in isolated local sandbox.`);
+      }
+      setTimeout(() => setUploadStatus(null), 4500);
     };
     reader.readAsText(file);
   };

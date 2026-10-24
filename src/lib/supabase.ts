@@ -40,23 +40,27 @@ export async function saveDecisionLog(
     status: "SIMULATED",
   };
 
-  // If live Supabase is configured, persist to database table 'recommendations' / 'voyages'
+  // If live Supabase is configured and authenticated, persist to user-isolated 'voyages' table
   if (supabase) {
     try {
-      const { data, error } = await supabase.from("voyages").insert([
-        {
-          cargo_type: log.cargo_type,
-          cargo_quantity_mt: log.cargo_tonnage,
-          origin_port: log.origin,
-          destination_port: log.destination,
-          laycan_date: new Date(Date.now() + 5 * 86400000).toISOString(),
-          fuel_price_usd: inputs.fuelCostPerTonne,
-          selected_vessel_id: verdict.recommendedVesselId,
-          status: log.status,
-        },
-      ]).select();
-      if (!error && data && data.length > 0) {
-        return { success: true, id: data[0].id || log.id! };
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data, error } = await supabase.from("voyages").insert([
+          {
+            user_id: session.user.id,
+            cargo_type: log.cargo_type,
+            cargo_quantity_mt: log.cargo_tonnage,
+            origin_port: log.origin,
+            destination_port: log.destination,
+            laycan_date: new Date(Date.now() + 5 * 86400000).toISOString(),
+            fuel_price_usd: inputs.fuelCostPerTonne,
+            selected_vessel_id: verdict.recommendedVesselId,
+            status: log.status,
+          },
+        ]).select();
+        if (!error && data && data.length > 0) {
+          return { success: true, id: data[0].id || log.id! };
+        }
       }
     } catch {
       // Fallback to local storage if network or table issue

@@ -1,8 +1,34 @@
 -- BlueSentinel Seed Data: Captain Arun Sharma's Benchmark Voyage
 -- 75,000 MT Thermal Coal from Singapore (SGSIN) to Paradip (INPBD)
 -- Highlights: Vessel A Draft Violation, Vessel B Recommended, Vessel C Demurrage Delay Risk
+-- Note: Executed via Supabase Dashboard SQL Editor or Service Role
 
--- 1. Insert/Upsert Reference Port Rules
+-- Ensure demo user exists in auth.users if not present
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = '00000000-0000-0000-0000-000000000001') THEN
+    INSERT INTO auth.users (
+      id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000000',
+      'authenticated',
+      'authenticated',
+      'captain.sharma@bluesentinel.internal',
+      crypt('DemoSecurePass2026!', gen_salt('bf')),
+      NOW(),
+      '{"provider":"email","providers":["email"]}',
+      '{"full_name":"Captain Arun Sharma"}',
+      NOW(),
+      NOW()
+    );
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- In case auth.users insertion is restricted in managed environment, continue
+  NULL;
+END $$;
+
+-- 1. Insert/Upsert Reference Port Rules (Public Read-Only)
 INSERT INTO public.port_rules (
   id, port_name, country, max_draft_cd, tide_allowance_avg, required_ukc, 
   demurrage_rate_usd, lightering_rate_usd, required_documents, berth_conditions
@@ -31,7 +57,7 @@ ON CONFLICT (id) DO UPDATE SET
   required_documents = EXCLUDED.required_documents,
   berth_conditions = EXCLUDED.berth_conditions;
 
--- 2. Insert/Upsert Demo Vessels (A, B, C)
+-- 2. Insert/Upsert Demo Vessels (Public Read-Only)
 INSERT INTO public.vessels (
   id, name, type, dwt, loaded_draft, average_speed, daily_fuel_burn, freight_daily_rate, emission_factor
 ) VALUES
@@ -54,13 +80,28 @@ ON CONFLICT (id) DO UPDATE SET
   freight_daily_rate = EXCLUDED.freight_daily_rate,
   emission_factor = EXCLUDED.emission_factor;
 
--- 3. Insert Benchmark Voyage for Captain Arun Sharma
+-- 3. Profile for Captain Arun Sharma
+INSERT INTO public.profiles (
+  id, full_name, phone, role, organization
+) VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  'Captain Arun Sharma',
+  '+91 98765 43210',
+  'fleet_commander',
+  'BlueSentinel Fleet Operations'
+)
+ON CONFLICT (id) DO UPDATE SET
+  full_name = EXCLUDED.full_name,
+  organization = EXCLUDED.organization;
+
+-- 4. Benchmark Voyage for Captain Arun Sharma
 INSERT INTO public.voyages (
-  id, cargo_type, cargo_quantity_mt, origin_port, destination_port,
+  id, user_id, cargo_type, cargo_quantity_mt, origin_port, destination_port,
   laycan_date, fuel_price_usd, usd_to_inr_rate, port_waiting_days,
   selected_vessel_id, status
 ) VALUES (
   'a0000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001',
   'Thermal Coal',
   75000,
   'Singapore (SGSIN)',
@@ -73,6 +114,7 @@ INSERT INTO public.voyages (
   'RECOMMENDED_APPROVED'
 )
 ON CONFLICT (id) DO UPDATE SET
+  user_id = EXCLUDED.user_id,
   cargo_type = EXCLUDED.cargo_type,
   cargo_quantity_mt = EXCLUDED.cargo_quantity_mt,
   fuel_price_usd = EXCLUDED.fuel_price_usd,
@@ -81,12 +123,13 @@ ON CONFLICT (id) DO UPDATE SET
   selected_vessel_id = EXCLUDED.selected_vessel_id,
   status = EXCLUDED.status;
 
--- 4. Insert Deterministic Recommendation Decision Record
+-- 5. Deterministic Recommendation Decision Record
 INSERT INTO public.recommendations (
-  id, voyage_id, recommended_vessel_id, total_landed_cost_usd, risk_adjusted_cost_usd,
+  id, user_id, voyage_id, recommended_vessel_id, total_landed_cost_usd, risk_adjusted_cost_usd,
   compliance_status, draft_margin_m, overall_risk_score, co2_estimate_mt, rejection_reasons
 ) VALUES (
   'b0000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001',
   'a0000000-0000-0000-0000-000000000001',
   'MV Nilgiri Wave',
   778160.00,
@@ -117,6 +160,7 @@ INSERT INTO public.recommendations (
   }'::jsonb
 )
 ON CONFLICT (id) DO UPDATE SET
+  user_id = EXCLUDED.user_id,
   recommended_vessel_id = EXCLUDED.recommended_vessel_id,
   total_landed_cost_usd = EXCLUDED.total_landed_cost_usd,
   risk_adjusted_cost_usd = EXCLUDED.risk_adjusted_cost_usd,
@@ -126,11 +170,12 @@ ON CONFLICT (id) DO UPDATE SET
   co2_estimate_mt = EXCLUDED.co2_estimate_mt,
   rejection_reasons = EXCLUDED.rejection_reasons;
 
--- 5. Insert Benchmark Executive Report
+-- 6. Benchmark Executive Report
 INSERT INTO public.reports (
-  id, voyage_id, title, selected_vessel, destination_port, total_cost_usd, risk_score
+  id, user_id, voyage_id, title, selected_vessel, destination_port, total_cost_usd, risk_score
 ) VALUES (
   'RPT-2026-PBD-001',
+  '00000000-0000-0000-0000-000000000001',
   'a0000000-0000-0000-0000-000000000001',
   'Executive Decision Brief: Singapore to Paradip (75,000 MT Thermal Coal)',
   'MV Nilgiri Wave',
@@ -139,39 +184,45 @@ INSERT INTO public.reports (
   18
 )
 ON CONFLICT (id) DO UPDATE SET
+  user_id = EXCLUDED.user_id,
   title = EXCLUDED.title,
   selected_vessel = EXCLUDED.selected_vessel,
   destination_port = EXCLUDED.destination_port,
   total_cost_usd = EXCLUDED.total_cost_usd,
   risk_score = EXCLUDED.risk_score;
 
--- 6. Insert Uploaded Documents & RAG Knowledge Chunks
+-- 7. Uploaded Documents & RAG Knowledge Chunks
 INSERT INTO public.uploaded_documents (
-  id, filename, file_path, category, size_bytes, page_count
+  id, user_id, filename, file_path, category, size_bytes, page_count
 ) VALUES 
 (
   'c0000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001',
   'MV_Nilgiri_Wave_Q88_Specification.pdf',
-  'vessel_specs/MV_Nilgiri_Wave_Q88_Specification.pdf',
+  '00000000-0000-0000-0000-000000000001/MV_Nilgiri_Wave_Q88_Specification.pdf',
   'VESSEL_SPEC',
   245000,
   4
 ),
 (
   'c0000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000001',
   'Paradip_Harbor_Notice_To_Mariners_Draft_2026.pdf',
-  'port_notices/Paradip_Harbor_Notice_To_Mariners_Draft_2026.pdf',
+  '00000000-0000-0000-0000-000000000001/Paradip_Harbor_Notice_To_Mariners_Draft_2026.pdf',
   'PORT_NOTICE',
   412000,
   8
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  user_id = EXCLUDED.user_id,
+  file_path = EXCLUDED.file_path;
 
 INSERT INTO public.document_chunks (
-  id, document_id, page_number, heading, content, keywords
+  id, user_id, document_id, page_number, heading, content, keywords
 ) VALUES
 (
   'd0000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000002',
   2,
   'Section 3.1: Paradip Inbound Draft and Under-Keel Clearance Limits',
@@ -180,6 +231,7 @@ INSERT INTO public.document_chunks (
 ),
 (
   'd0000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000001',
   1,
   'MV Nilgiri Wave: Technical Particulars & Fuel Economy',
@@ -188,10 +240,13 @@ INSERT INTO public.document_chunks (
 ),
 (
   'd0000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000001',
   'c0000000-0000-0000-0000-000000000002',
   5,
   'Demurrage Liability & Notice of Readiness (NOR) Validation',
   'Demurrage rate is fixed at $24,000 per running day for bulk carriers exceeding 50,000 DWT. Notice of Readiness (NOR) is only valid once the vessel has dropped anchor inside the port limits and passed all quarantine and customs health clearance. Pre-berthing delays caused by draft deficiency or inadequate documentation will count as owner time.',
   ARRAY['demurrage', 'NOR', 'liability', 'delays']
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  user_id = EXCLUDED.user_id,
+  content = EXCLUDED.content;

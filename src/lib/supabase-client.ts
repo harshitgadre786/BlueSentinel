@@ -1,8 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// Multi-variable fallback resolver for Next.js and Vercel Supabase integration
-// Vercel Supabase Integration automatically injects NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-// as well as server-side SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.
+// Client-safe Supabase resolver. Only public anonymous keys are used in browser contexts.
+// Sensitive keys such as SUPABASE_SERVICE_ROLE_KEY are strictly forbidden in client bundles.
 const getSupabaseUrl = (): string => {
   return (
     process.env.NEXT_PUBLIC_SUPABASE_URL ||

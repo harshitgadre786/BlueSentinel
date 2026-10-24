@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase-client";
+import { NextRequest, NextResponse } from "next/server";
+import { isSupabaseConfigured } from "@/lib/supabase-client";
+import { createClient } from "@supabase/supabase-js";
 
-// Pre-packaged Seed Data for Captain Sharma's 75,000 MT Thermal Coal Paradip Voyage
-const CAPTAIN_SHARMA_SEED = {
+// Benchmark Seed Data for Captain Sharma (used for local fallback or verified admin seeding)
+const CAPTAIN_SHARMA_BENCHMARK = {
   vessels: [
     {
       id: "vessel_a",
@@ -95,6 +96,7 @@ const CAPTAIN_SHARMA_SEED = {
   ],
   voyage: {
     id: "a0000000-0000-0000-0000-000000000001",
+    user_id: "00000000-0000-0000-0000-000000000001",
     cargo_type: "Thermal Coal",
     cargo_quantity_mt: 75000,
     origin_port: "Singapore (SGSIN)",
@@ -108,6 +110,7 @@ const CAPTAIN_SHARMA_SEED = {
   },
   recommendation: {
     id: "b0000000-0000-0000-0000-000000000001",
+    user_id: "00000000-0000-0000-0000-000000000001",
     voyage_id: "a0000000-0000-0000-0000-000000000001",
     recommended_vessel_id: "MV Nilgiri Wave",
     total_landed_cost_usd: 778160,
@@ -131,6 +134,7 @@ const CAPTAIN_SHARMA_SEED = {
   },
   report: {
     id: "RPT-2026-PBD-001",
+    user_id: "00000000-0000-0000-0000-000000000001",
     title: "Executive Decision Brief: Singapore to Paradip 75,000 MT Thermal Coal",
     selected_vessel: "MV Nilgiri Wave",
     destination_port: "Paradip (INPBD)",
@@ -139,64 +143,122 @@ const CAPTAIN_SHARMA_SEED = {
   },
 };
 
-export async function GET() {
-  if (!isSupabaseConfigured || !supabase) {
+// Verify administrative authorization
+function isAuthorizedAdmin(req: NextRequest): boolean {
+  const authHeader = req.headers.get("authorization") || "";
+  const adminSecretHeader = req.headers.get("x-admin-key") || req.headers.get("x-admin-secret") || "";
+  const expectedSecret = process.env.ADMIN_SECRET || process.env.CRON_SECRET || "";
+
+  // If secret configured, verify match
+  if (expectedSecret && (adminSecretHeader === expectedSecret || authHeader === `Bearer ${expectedSecret}`)) {
+    return true;
+  }
+
+  // Also check if server service role key matches authorization
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`) {
+    return true;
+  }
+
+  return false;
+}
+
+export async function GET(req: NextRequest) {
+  // If Supabase is unconfigured, return demo data for offline local storage
+  if (!isSupabaseConfigured) {
     return NextResponse.json({
       status: "DEMO_MODE",
       isConfigured: false,
       message:
-        "Supabase environment variables are unconfigured. BlueSentinel is operating in offline demo sandbox mode with Captain Sharma benchmark data.",
-      seedData: CAPTAIN_SHARMA_SEED,
+        "Supabase credentials unconfigured. Operating in isolated local sandbox mode with Captain Sharma benchmark data.",
+      benchmarkData: CAPTAIN_SHARMA_BENCHMARK,
     });
   }
 
+  // In production with connected Supabase: Reject anonymous calls
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        message:
+          "Anonymous access to database seeding is strictly prohibited. Production database mutations require admin authorization.",
+      },
+      { status: 401 }
+    );
+  }
+
+  return NextResponse.json({
+    status: "AUTHORIZED_READY",
+    isConfigured: true,
+    message: "Admin authorized. Send POST with administrative credentials to execute seed insertion.",
+  });
+}
+
+export async function POST(req: NextRequest) {
+  // Always reject unauthenticated requests
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        message: "Forbidden. Administrative authentication required to seed or alter production data.",
+      },
+      { status: 401 }
+    );
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json(
+      {
+        error: "Configuration Error",
+        message: "SUPABASE_SERVICE_ROLE_KEY is required on the server to execute admin seed mutations.",
+      },
+      { status: 500 }
+    );
+  }
+
   try {
-    // Check if tables exist and attempt seeding
+    // Server-only client using service_role key
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+
     const results: Record<string, string> = {};
 
-    // 1. Seed Port Rules
-    const { error: portErr } = await supabase
+    const { error: pErr } = await adminClient
       .from("port_rules")
-      .upsert(CAPTAIN_SHARMA_SEED.port_rules, { onConflict: "id" });
-    results["port_rules"] = portErr ? `Error: ${portErr.message}` : "Seeded successfully";
+      .upsert(CAPTAIN_SHARMA_BENCHMARK.port_rules, { onConflict: "id" });
+    results["port_rules"] = pErr ? `Error: ${pErr.message}` : "Success";
 
-    // 2. Seed Vessels
-    const { error: vesselErr } = await supabase
+    const { error: vErr } = await adminClient
       .from("vessels")
-      .upsert(CAPTAIN_SHARMA_SEED.vessels, { onConflict: "id" });
-    results["vessels"] = vesselErr ? `Error: ${vesselErr.message}` : "Seeded successfully";
+      .upsert(CAPTAIN_SHARMA_BENCHMARK.vessels, { onConflict: "id" });
+    results["vessels"] = vErr ? `Error: ${vErr.message}` : "Success";
 
-    // 3. Seed Voyages
-    const { error: voyageErr } = await supabase
+    const { error: voyErr } = await adminClient
       .from("voyages")
-      .upsert([CAPTAIN_SHARMA_SEED.voyage], { onConflict: "id" });
-    results["voyages"] = voyageErr ? `Error: ${voyageErr.message}` : "Seeded successfully";
+      .upsert([CAPTAIN_SHARMA_BENCHMARK.voyage], { onConflict: "id" });
+    results["voyages"] = voyErr ? `Error: ${voyErr.message}` : "Success";
 
-    // 4. Seed Recommendations
-    const { error: recErr } = await supabase
+    const { error: rErr } = await adminClient
       .from("recommendations")
-      .upsert([CAPTAIN_SHARMA_SEED.recommendation], { onConflict: "id" });
-    results["recommendations"] = recErr ? `Error: ${recErr.message}` : "Seeded successfully";
+      .upsert([CAPTAIN_SHARMA_BENCHMARK.recommendation], { onConflict: "id" });
+    results["recommendations"] = rErr ? `Error: ${rErr.message}` : "Success";
 
-    // 5. Seed Report
-    const { error: reportErr } = await supabase
+    const { error: repErr } = await adminClient
       .from("reports")
-      .upsert([CAPTAIN_SHARMA_SEED.report], { onConflict: "id" });
-    results["reports"] = reportErr ? `Error: ${reportErr.message}` : "Seeded successfully";
+      .upsert([CAPTAIN_SHARMA_BENCHMARK.report], { onConflict: "id" });
+    results["reports"] = repErr ? `Error: ${repErr.message}` : "Success";
 
     return NextResponse.json({
-      status: "CONNECTED",
-      isConfigured: true,
-      message: "Connected to Supabase. Seed data verified.",
+      status: "SUCCESS",
+      message: "Admin seed executed successfully.",
       results,
     });
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Failed to seed Supabase";
-    return NextResponse.json({
-      status: "ERROR",
-      isConfigured: true,
-      error: errorMsg,
-      note: "Ensure tables are created by executing supabase/migrations/20261024_init_schema.sql in the Supabase SQL editor.",
-    });
+    const errorMsg = err instanceof Error ? err.message : "Internal error";
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
