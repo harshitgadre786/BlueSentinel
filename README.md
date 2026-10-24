@@ -163,4 +163,4 @@ Access the app at: **`http://localhost:3000`**
 
 1. **Simulated Data**: All bathymetry limits, weather zones, and lightering tariffs represent calibrated prototype data and must not be used for live navigation.
 2. **Third-Party SMS Gateways**: Real SMS delivery requires Twilio/MessageBird credentials configured in Supabase. In development mode, test code `123456` enables instant verification.
-3. **Map Tiles**: Basemap uses CartoDB Dark Matter / OpenStreetMap tiles. High-seas satellite bathymetry layers require active network connectivity.
+3. **Map Cartography**: Pure OpenStreetMap tiles (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) with visible OpenStreetMap attribution and zero paid API keys or Mapbox/Google Maps requirements. Includes a high-fidelity offline vector SVG fallback cartogram.
