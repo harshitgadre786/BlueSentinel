@@ -19,11 +19,9 @@ import {
   Layers,
   ShieldAlert,
   Navigation2,
-  Waves,
   Eye,
-  Info,
   CheckCircle2,
-  Volume2,
+  Info,
 } from "lucide-react";
 
 // Dynamically import Leaflet components to prevent Next.js SSR issues
@@ -85,7 +83,7 @@ export default function MaritimeMap({
     }
   }, []);
 
-  // Compute route coordinates for Singapore -> Paradip
+  // Compute route coordinates for Singapore -> Paradip (Prototype scenario data)
   const routeKey = `${selectedOrigin.id}-${selectedPort.id}`;
   const defaultRoute: [number, number][] = MARITIME_ROUTES[routeKey] || [
     [1.29, 103.85], // Singapore
@@ -108,7 +106,7 @@ export default function MaritimeMap({
   // Map center between origin (Singapore) and destination (Paradip)
   const mapCenter: [number, number] = [11.0, 93.0];
 
-  // Speed-related acoustic noise and sanctuary risk
+  // Demo eco-speed threshold: 11.5 knots
   const isAcousticViolation = speedKnots > 11.5;
   const estimatedNoiseDB = Math.round(152 + Math.pow(speedKnots / 10, 2.5) * 12);
 
@@ -127,6 +125,9 @@ export default function MaritimeMap({
               </span>
               <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-forest/10 dark:bg-paper-light/10 text-forest/70 dark:text-paper-light/70 border border-forest/15 dark:border-paper-light/15">
                 {resultA.voyageDistanceNM} NM
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-mustard/20 text-mustard border border-mustard/30 uppercase">
+                Prototype scenario data
               </span>
             </div>
             <span className="text-[11px] text-forest/60 dark:text-paper-light/60 font-sans">
@@ -155,7 +156,7 @@ export default function MaritimeMap({
                 : "border-forest/20 dark:border-paper-light/20 text-forest/60 dark:text-paper-light/60"
             }`}
           >
-            Eco Zones: {showRiskZones ? "On" : "Off"}
+            Sensitivity Overlays: {showRiskZones ? "On" : "Off"}
           </button>
         </div>
       </div>
@@ -175,21 +176,21 @@ export default function MaritimeMap({
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           )}
           <span className="text-[11px] leading-tight">
-            <strong>Vessel Speed: {speedKnots} kts</strong> • Underwater Radiated Noise (URN): ~{estimatedNoiseDB} dB.{" "}
+            <strong>Vessel Speed: {speedKnots} kts</strong> • Simulated Noise Index: ~{estimatedNoiseDB} dB.{" "}
             {isAcousticViolation ? (
               <span className="text-coral font-medium">
-                Exceeds 11.5 kts cetacean acoustic advisory south of Sri Lanka / Bay of Bengal. High cavitation risk.
+                Exceeds demo eco-speed threshold: 11.5 knots (Prototype cetacean sensitivity zone). Elevated simulated cavitation risk.
               </span>
             ) : (
               <span className="text-emerald-700 dark:text-emerald-300 font-medium">
-                Eco-speed compliant. Low cavitation sound pressure protects marine wildlife and saves ~24% bunker fuel.
+                Compliant with demo eco-speed threshold: 11.5 knots. Low cavitation sound pressure models marine sensitivity protection and achieves estimated prototype fuel reduction.
               </span>
             )}
           </span>
         </div>
 
         <div className="text-[10px] font-mono text-forest/60 dark:text-paper-light/60">
-          IMO MEPC.1/Circ.906 Guideline
+          Demo eco-speed threshold: 11.5 knots (Prototype scenario data)
         </div>
       </div>
 
@@ -203,7 +204,7 @@ export default function MaritimeMap({
               Initializing OpenStreetMap Canvas...
             </span>
             <span className="text-[11px] text-forest/50 dark:text-paper-light/50 mt-1">
-              Rendering Bay of Bengal waypoint coordinates
+              Rendering prototype scenario waypoints (Singapore ➔ Paradip)
             </span>
           </div>
         ) : mapMode === "editorial" || tileError ? (
@@ -212,7 +213,7 @@ export default function MaritimeMap({
             <div className="flex items-center justify-between text-[11px] font-mono text-forest/70 dark:text-paper-light/70 border-b border-forest/15 dark:border-paper-light/15 pb-2">
               <span className="font-bold flex items-center gap-1 text-coral">
                 <Navigation2 className="w-3.5 h-3.5" />
-                Editorial Nautical Chart: Singapore ➔ Paradip Transit
+                Editorial Nautical Chart: Singapore ➔ Paradip Transit (Prototype scenario data)
               </span>
               <span>1,650 NM • 75,000 MT Thermal Coal</span>
             </div>
@@ -224,28 +225,28 @@ export default function MaritimeMap({
                 <path d="M 50 280 Q 250 200 450 180 T 750 60" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" className="text-forest/15 dark:text-paper-light/15" />
                 <path d="M 80 300 Q 280 230 500 210 T 780 90" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" className="text-forest/10 dark:text-paper-light/10" />
 
-                {/* Eco-Sensitive Zone: Sri Lanka Acoustic Buffer */}
-                <rect x="220" y="140" width="160" height="90" rx="8" fill="#F24B2A" fillOpacity="0.12" stroke="#F24B2A" strokeWidth="1.5" strokeDasharray="4 4" />
+                {/* Eco-Sensitive Zone: Prototype cetacean sensitivity zone */}
+                <rect x="220" y="140" width="165" height="90" rx="8" fill="#F24B2A" fillOpacity="0.12" stroke="#F24B2A" strokeWidth="1.5" strokeDasharray="4 4" />
                 <text x="230" y="160" fill="#F24B2A" fontSize="10" fontFamily="sans-serif" fontWeight="bold">
-                  Sri Lanka Cetacean Sanctuary
+                  Prototype cetacean sensitivity zone
                 </text>
                 <text x="230" y="175" fill="currentColor" fontSize="9" className="text-forest/70 dark:text-paper-light/70">
-                  Voluntary Speed Limit: ≤ 11.5 kts
+                  Demo eco-speed threshold: 11.5 knots
                 </text>
-                <text x="230" y="190" fill="currentColor" fontSize="9" className="text-forest/70 dark:text-paper-light/70">
-                  Active URN Advisory Corridor
+                <text x="230" y="190" fill="currentColor" fontSize="8.5" className="text-forest/70 dark:text-paper-light/70 font-mono">
+                  Prototype scenario data
                 </text>
 
-                {/* Eco-Sensitive Zone: Paradip Sandheads Siltation */}
-                <rect x="580" y="25" width="160" height="75" rx="8" fill="#D8A83C" fillOpacity="0.15" stroke="#D8A83C" strokeWidth="1.5" strokeDasharray="4 4" />
+                {/* Eco-Sensitive Zone: Prototype coastal sensitivity zone */}
+                <rect x="580" y="25" width="165" height="75" rx="8" fill="#D8A83C" fillOpacity="0.15" stroke="#D8A83C" strokeWidth="1.5" strokeDasharray="4 4" />
                 <text x="590" y="45" fill="#D8A83C" fontSize="10" fontFamily="sans-serif" fontWeight="bold">
-                  Paradip Sandheads & Turtles
+                  Prototype coastal sensitivity zone
                 </text>
                 <text x="590" y="60" fill="currentColor" fontSize="9" className="text-forest/70 dark:text-paper-light/70">
-                  Gahirmatha Olive Ridley Buffer
+                  Simulated nearshore boundary
                 </text>
-                <text x="590" y="75" fill="currentColor" fontSize="9" className="text-forest/70 dark:text-paper-light/70">
-                  Max Permissible Draft: 14.50m CD
+                <text x="590" y="75" fill="currentColor" fontSize="8.5" className="text-forest/70 dark:text-paper-light/70 font-mono">
+                  Draft limit: 14.50m CD (Prototype)
                 </text>
 
                 {/* Voyage Route Polyline */}
@@ -281,7 +282,7 @@ export default function MaritimeMap({
                   MV Nilgiri Wave
                 </text>
                 <text x="390" y="144" fill="currentColor" fontSize="9" className="text-forest/70 dark:text-paper-light/70">
-                  Pos: 12.8°N, 89.2°E • {speedKnots} kts
+                  Simulated Pos: 12.8°N, 89.2°E • {speedKnots} kts
                 </text>
 
                 {/* Destination Marker: Paradip */}
@@ -298,7 +299,7 @@ export default function MaritimeMap({
 
             {/* Bottom info banner in fallback */}
             <div className="flex items-center justify-between text-[11px] text-forest/70 dark:text-paper-light/70 bg-paper-surface/80 dark:bg-paper-dark-surface/80 p-2 rounded border border-forest/15 dark:border-paper-light/15">
-              <span>Fallback Cartogram: Operational routing verified without external dependencies.</span>
+              <span>Decision-support prototype. Verify navigational and port constraints with official sources before operations.</span>
               <button
                 type="button"
                 onClick={() => {
@@ -349,7 +350,7 @@ export default function MaritimeMap({
               }}
             />
 
-            {/* Eco-Sensitive Zones (Polygons) */}
+            {/* Eco-Sensitive Zones (Polygons labeled as Prototype scenario data) */}
             {showRiskZones &&
               MARITIME_RISK_ZONES.map((zone) => {
                 const isDanger = zone.severity === "danger";
@@ -377,6 +378,9 @@ export default function MaritimeMap({
                           <AlertTriangle className="w-4 h-4 shrink-0" style={{ color }} />
                           <span>{zone.name}</span>
                         </div>
+                        <span className="inline-block text-[9px] font-mono px-1 py-0.2 rounded bg-mustard/20 text-mustard uppercase font-semibold">
+                          Prototype scenario data
+                        </span>
                         <p className="text-[11px] leading-relaxed text-forest/80">
                           {zone.description}
                         </p>
@@ -429,10 +433,12 @@ export default function MaritimeMap({
                     <span>Destination: {selectedPort.name}</span>
                   </div>
                   <div className="text-[11px] text-forest/80 font-mono">
-                    Max Permissible Draft: <strong>{selectedPort.maxPermissibleDraft}m CD</strong>
+                    Max Permissible Draft: <strong>{selectedPort.maxPermissibleDraft}m CD</strong>{" "}
+                    <span className="text-[9px] text-forest/60">(Prototype scenario data)</span>
                   </div>
                   <div className="text-[11px] text-forest/80 font-mono">
-                    Under Keel Clearance (UKC): <strong>{selectedPort.requiredUKC}m</strong>
+                    Under Keel Clearance (UKC): <strong>{selectedPort.requiredUKC}m</strong>{" "}
+                    <span className="text-[9px] text-forest/60">(Prototype scenario data)</span>
                   </div>
                   <div className="p-1 rounded bg-coral/10 text-coral text-[10px] font-semibold mt-1">
                     Coal Berth 1 & 2 • Mechanized Discharge
@@ -456,10 +462,10 @@ export default function MaritimeMap({
                 <div className="p-2 text-xs font-sans text-forest">
                   <div className="font-serif font-bold text-sm flex items-center gap-1 text-coral">
                     <Navigation2 className="w-3.5 h-3.5" />
-                    <span>Active Vessel: MV Nilgiri Wave</span>
+                    <span>Simulated Transit: MV Nilgiri Wave</span>
                   </div>
                   <div className="text-[11px] text-forest/80 mt-1">
-                    Bay of Bengal Inbound Transit
+                    Bay of Bengal Inbound Track (Prototype scenario data)
                   </div>
                   <div className="text-[11px] font-mono mt-0.5">
                     Speed: <strong>{speedKnots} kts</strong> • Noise: <strong>{estimatedNoiseDB} dB</strong>
@@ -471,10 +477,15 @@ export default function MaritimeMap({
         )}
 
         {/* Floating Map Legend (Mobile and Desktop Friendly) */}
-        <div className="absolute bottom-3 left-3 bg-paper-light/95 dark:bg-paper-dark/95 backdrop-blur-md border border-forest/20 dark:border-paper-light/20 rounded-lg p-2.5 text-[11px] shadow-editorial max-w-[220px] sm:max-w-xs space-y-1.5 z-[500]">
-          <div className="font-serif font-bold text-forest dark:text-paper-light flex items-center gap-1.5">
-            <Layers className="w-3 h-3 text-coral" />
-            <span>Nautical Legend</span>
+        <div className="absolute bottom-3 left-3 bg-paper-light/95 dark:bg-paper-dark/95 backdrop-blur-md border border-forest/20 dark:border-paper-light/20 rounded-lg p-2.5 text-[11px] shadow-editorial max-w-[240px] sm:max-w-xs space-y-1.5 z-[500]">
+          <div className="font-serif font-bold text-forest dark:text-paper-light flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Layers className="w-3 h-3 text-coral" />
+              <span>Nautical Legend</span>
+            </div>
+            <span className="text-[9px] font-mono uppercase text-forest/50 dark:text-paper-light/50">
+              Prototype
+            </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-1 text-forest/75 dark:text-paper-light/75 text-[10px]">
             <div className="flex items-center gap-1.5">
@@ -487,11 +498,11 @@ export default function MaritimeMap({
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-coral shrink-0" />
-              <span>Vessel Position</span>
+              <span>Simulated Position</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-coral/30 border border-coral shrink-0" />
-              <span>Eco-Zone Buffer</span>
+              <span>Sensitivity Zone</span>
             </div>
           </div>
         </div>
@@ -512,33 +523,48 @@ export default function MaritimeMap({
                 ✕
               </button>
             </div>
+            <div className="pt-1">
+              <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-mustard/20 text-mustard uppercase font-semibold">
+                Prototype scenario data
+              </span>
+            </div>
             <p className="text-forest/80 dark:text-paper-light/80 text-[11px] mt-1.5 leading-relaxed">
               {selectedZoneInfo.description}
             </p>
             <div className="mt-2 p-1.5 rounded bg-forest/10 dark:bg-paper-light/10 border border-forest/15 dark:border-paper-light/15 text-[10px] text-forest dark:text-paper-light">
-              <span className="font-bold text-coral">Directive: </span>
+              <span className="font-bold text-coral">Advisory: </span>
               {selectedZoneInfo.mitigationRequirement}
             </div>
           </div>
         )}
       </div>
 
-      {/* Prominent Footer Attribution (Required for OpenStreetMap) */}
-      <div className="px-4 py-2 bg-paper-surface dark:bg-paper-dark-surface border-t border-forest/15 dark:border-paper-light/15 flex flex-wrap items-center justify-between text-[11px] text-forest/60 dark:text-paper-light/60">
-        <div className="flex items-center gap-1.5">
-          <span>Map data &copy;</span>
-          <a
-            href="https://www.openstreetmap.org/copyright"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-coral underline hover:opacity-80 font-medium"
-          >
-            OpenStreetMap contributors
-          </a>
-          <span>• Under ODbL License</span>
+      {/* Prominent Footer Attribution & Operational Disclaimer */}
+      <div className="px-4 py-2.5 bg-paper-surface dark:bg-paper-dark-surface border-t border-forest/15 dark:border-paper-light/15 space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between text-[11px] text-forest/70 dark:text-paper-light/70 gap-2">
+          <div className="flex items-center gap-1.5">
+            <span>Map data &copy;</span>
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-coral underline hover:opacity-80 font-medium"
+            >
+              OpenStreetMap contributors
+            </a>
+            <span>• Under ODbL License</span>
+          </div>
+          <div className="text-[10px] font-mono text-forest/60 dark:text-paper-light/60">
+            Leaflet v1.9.4 • Pure OSM Cartography
+          </div>
         </div>
-        <div className="text-[10px] font-mono">
-          Leaflet v1.9.4 • No API Key Dependency
+
+        {/* Required Hackathon Disclaimer */}
+        <div className="p-2 rounded bg-forest/5 dark:bg-paper-light/5 border border-forest/10 dark:border-paper-light/10 text-[10px] leading-relaxed text-forest/75 dark:text-paper-light/75 flex items-center gap-1.5 font-medium">
+          <Info className="w-3.5 h-3.5 text-mustard shrink-0" />
+          <span>
+            Decision-support prototype. Verify navigational, environmental, port, and safety constraints with official sources before operations.
+          </span>
         </div>
       </div>
     </div>

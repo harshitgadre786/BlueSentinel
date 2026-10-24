@@ -25,11 +25,11 @@ export default function EnvironmentalImpactPage() {
   const origin = ORIGIN_PORTS.singapore;
   const vessel = DEMO_VESSELS[selectedVesselId];
 
-  // Acoustic & emissions model
+  // Acoustic & emissions model (Prototype scenario data)
   const noiseDB = calculateAcousticNoiseDB(speedKnots);
   const isSanctuaryAlert = speedKnots > 11.5;
 
-  // Fuel & CO2 at speed
+  // Fuel & CO2 at speed (Estimated prototype fuel reduction calculations)
   const distanceNM = 1650;
   const seaDays = Number((distanceNM / (speedKnots * 24)).toFixed(2));
   const speedRatio = speedKnots / vessel.averageSpeed;
@@ -104,22 +104,27 @@ export default function EnvironmentalImpactPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-6 sm:px-10 py-10 space-y-10">
         {/* Header */}
         <div className="space-y-2">
-          <span className="text-xs font-mono uppercase tracking-widest text-coral">
-            PHASE 7 • MARITIME DECARBONIZATION & URN AUDIT
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono uppercase tracking-widest text-coral">
+              PHASE 7 • MARITIME DECARBONIZATION & URN AUDIT
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-mustard/20 text-mustard border border-mustard/30 uppercase">
+              Prototype scenario data
+            </span>
+          </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-black tracking-tight">
             Environmental Impact & Sensitive Zone Advisory
           </h1>
           <p className="text-xs sm:text-sm text-forest/75 dark:text-paper-light/75 max-w-2xl font-normal leading-relaxed">
-            Monitor voyage route risk zones, Underwater Radiated Noise (URN) scores, and emissions tradeoffs along the Bay of Bengal and Indian Ocean cetacean corridors.
+            Evaluate voyage route sensitivity overlays, simulated Underwater Radiated Noise (URN) indices, and emissions tradeoffs along prototype sensitivity zones.
           </p>
         </div>
 
         {/* DECISION SUPPORT DISCLAIMER */}
-        <div className="p-3.5 rounded-lg bg-paper-surface dark:bg-paper-dark-surface border border-forest/15 dark:border-paper-light/15 text-xs flex items-center gap-2">
+        <div className="p-4 rounded-lg bg-paper-surface dark:bg-paper-dark-surface border border-forest/15 dark:border-paper-light/15 text-xs flex items-center gap-2.5 shadow-sm">
           <Info className="w-4 h-4 text-mustard shrink-0" />
-          <span>
-            <strong>Decision-support prototype:</strong> This is an advisory decision tool, not an ECDIS certified navigational system. Eco-sensitive boundaries represent prototype regulatory corridors.
+          <span className="leading-relaxed">
+            <strong>Decision-support prototype.</strong> Verify navigational, environmental, port, and safety constraints with official sources before operations.
           </span>
         </div>
 
@@ -141,8 +146,8 @@ export default function EnvironmentalImpactPage() {
               className="w-full h-2 bg-paper-surface dark:bg-paper-dark rounded accent-coral cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-forest/50 dark:text-paper-light/50 font-mono">
-              <span>10.0 kts (Min cavitation)</span>
-              <span>11.5 kts (Whale limit)</span>
+              <span>10.0 kts (Simulated min)</span>
+              <span>Demo eco-speed threshold: 11.5 knots</span>
               <span>16.5 kts</span>
             </div>
           </div>
@@ -154,29 +159,31 @@ export default function EnvironmentalImpactPage() {
               Est. CO₂ Footprint
             </span>
             <div className="font-serif font-black text-2xl text-coral">{totalCO2MT} MT</div>
-            <div className="text-[10px] text-forest/60 font-mono">Total fuel: {totalFuelMT} MT VLSFO</div>
+            <div className="text-[10px] text-forest/60 font-mono">
+              Fuel: {totalFuelMT} MT VLSFO <span className="text-[9px] opacity-75">(Prototype)</span>
+            </div>
           </div>
 
           {/* Underwater Radiated Noise (URN) */}
           <div className="space-y-1">
             <span className="text-[10px] font-mono uppercase text-forest/60 dark:text-paper-light/60 flex items-center gap-1">
               <Volume2 className="w-3 h-3 text-mustard" />
-              Underwater Noise (URN)
+              Simulated Noise Index (URN)
             </span>
             <div className={`font-serif font-black text-2xl ${isSanctuaryAlert ? "text-coral" : "text-forest dark:text-mustard"}`}>
               {noiseDB} dB
             </div>
             <div className="text-[10px] text-forest/60 font-mono">
-              {isSanctuaryAlert ? "Exceeds 11.5 kts limit" : "Whale sanctuary compliant"}
+              {isSanctuaryAlert ? "Exceeds demo threshold: 11.5 kts" : "Demo eco-speed compliant"}
             </div>
           </div>
         </div>
 
         {/* CORE OPERATIONAL INSIGHT BANNER */}
         <div className="p-4 rounded-lg bg-forest/10 dark:bg-paper-light/10 border-l-4 border-coral text-xs space-y-1">
-          <span className="font-bold font-serif text-sm block">Environmental Insight:</span>
+          <span className="font-bold font-serif text-sm block">Environmental Insight (Prototype Scenario Data):</span>
           <p className="leading-relaxed opacity-90">
-            &ldquo;Lower speed can reduce fuel use, emissions, and underwater-noise exposure when operationally feasible. In the Sri Lanka cetacean buffer, reducing speed to <strong>11.5 knots</strong> decreases cavitation sound pressure by over <strong>8.2 dB</strong>, protecting Blue Whale and Olive Ridley sea turtle corridors.&rdquo;
+            &ldquo;Lower speed can reduce fuel use, emissions, and underwater-noise exposure when operationally feasible. In the prototype cetacean sensitivity zone, reducing speed to the <strong>demo eco-speed threshold: 11.5 knots</strong> models sound pressure mitigation and achieves <strong>estimated prototype fuel reduction</strong>.&rdquo;
           </p>
         </div>
 
@@ -185,10 +192,10 @@ export default function EnvironmentalImpactPage() {
           <div className="flex items-center justify-between">
             <h2 className="font-serif text-xl font-bold text-forest dark:text-paper-light flex items-center gap-2">
               <Waves className="w-5 h-5 text-coral" />
-              <span>Singapore ➔ Paradip Voyage Route & Sensitive Risk Zones</span>
+              <span>Singapore ➔ Paradip Voyage Route & Sensitive Zones</span>
             </h2>
-            <span className="text-xs font-mono text-forest/60 dark:text-paper-light/60">
-              LEAFLET CARTOGRAPHIC PROJECTION
+            <span className="text-xs font-mono text-forest/60 dark:text-paper-light/60 uppercase">
+              Prototype scenario data
             </span>
           </div>
 

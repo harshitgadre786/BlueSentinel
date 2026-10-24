@@ -196,14 +196,14 @@ export default function SpeedSlider({
               ) : (
                 <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
                   <Leaf className="w-3 h-3 text-emerald-400 shrink-0" />
-                  Cetacean Safe (&lt;12 kts)
+                  Eco-Speed Compliant (≤11.5 kts)
                 </span>
               )}
             </div>
             <div className="text-[10px] text-slate-400 mt-1">
               {resultB.marineSanctuaryCaution
-                ? "Recommend <= 11.5 kts near coastal turtle nesting grounds"
-                : "Cavitation noise within IMO & DG Shipping guidelines"}
+                ? "Demo eco-speed threshold: 11.5 knots in prototype sensitivity zone"
+                : "Cavitation noise within demo eco-speed threshold (Prototype scenario data)"}
             </div>
           </div>
         </div>

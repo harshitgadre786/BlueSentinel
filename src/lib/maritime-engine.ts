@@ -209,49 +209,49 @@ export const DEFAULT_VESSEL_B: VesselOption = {
   vesselNotes: "Optimized shallow-draft design with wake-equalizing Mewis duct; 100% compliant at Paradip with zero lightering penalty.",
 };
 
-// Active Maritime Risk Zones
+// Active Maritime Risk Zones (Prototype scenario data for decision modeling)
 export const MARITIME_RISK_ZONES: RiskZone[] = [
   {
     id: "zone_paradip_fairway",
-    name: "Paradip Fairway Shallow Siltation Shoal",
+    name: "Prototype coastal sensitivity zone",
     type: "SHALLOW_DRAFT",
     severity: "danger",
-    description: "Sandheads and approach fairway subject to post-monsoon siltation. Minimum clearance 14.2m CD strictly enforced.",
+    description: "Prototype scenario data: Sandheads approach fairway model subject to simulated siltation and turtle seasonal advisory.",
     coordinates: [
       [20.35, 86.6],
       [20.35, 86.85],
       [20.15, 86.85],
       [20.15, 86.6],
     ],
-    mitigationRequirement: "Vessels with draft >14.0m require tidal pilotage or mandatory transshipment lightering.",
+    mitigationRequirement: "Prototype guideline: Vessels with draft >14.0m evaluated for tidal transit or lightering.",
   },
   {
     id: "zone_bay_monsoon",
     name: "Bay of Bengal Monsoon & Cyclone Warning Sector",
     type: "CYCLONE_MONSOON",
     severity: "warning",
-    description: "Seasonal depression zone with swell heights 3.5m - 5.0m; increases hydrodynamic squat by up to 0.35m.",
+    description: "Prototype scenario data: Seasonal depression zone with simulated swell heights 3.5m - 5.0m.",
     coordinates: [
       [18.0, 84.0],
       [18.0, 90.0],
       [14.0, 90.0],
       [14.0, 84.0],
     ],
-    mitigationRequirement: "Maintain dynamic UKC allowance +0.4m; reduce speed to <12 kts in sea states >Beaufort 6.",
+    mitigationRequirement: "Prototype guideline: Maintain dynamic UKC allowance +0.4m; evaluate speed reduction.",
   },
   {
     id: "zone_cetacean_corridor",
-    name: "Sri Lanka / South India Cetacean Acoustic Conservation Corridor",
+    name: "Prototype cetacean sensitivity zone",
     type: "CETACEAN_CORRIDOR",
     severity: "caution",
-    description: "High density of Blue and Sperm whales in international shipping lane south of Dondra Head / Gulf of Mannar.",
+    description: "Prototype scenario data: Simulated marine mammal corridor south of international shipping lane.",
     coordinates: [
       [5.5, 79.5],
       [6.8, 82.5],
       [5.0, 82.5],
       [4.5, 79.5],
     ],
-    mitigationRequirement: "Voluntary speed reduction to 11.5 knots to mitigate underwater radiated noise (URN) and ship strikes.",
+    mitigationRequirement: "Demo eco-speed threshold: 11.5 knots evaluated to model underwater radiated noise (URN) mitigation.",
   },
   {
     id: "zone_kutch_siltation",

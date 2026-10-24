@@ -79,7 +79,7 @@ export default function WorkspaceHomePage() {
       icon: Leaf,
       tag: "Phase 7",
       accent: "hover:border-mustard group-hover:text-mustard",
-      desc: "Voyage route map, CO2 footprint curves, speed-related fuel impact, and Underwater Radiated Noise (URN) cetacean corridor alerts.",
+      desc: "Voyage route map, CO2 footprint curves, speed-related fuel impact, and Underwater Radiated Noise (URN) prototype sensitivity zone alerts.",
     },
     {
       title: "Decision Reports",
