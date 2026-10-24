@@ -18,12 +18,15 @@ import {
   ArrowRight,
   ExternalLink,
   RotateCcw,
+  Database,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function WorkspaceHomePage() {
-  const { user, signOut } = useAuth();
+  const { user, isConfigured, signOut } = useAuth();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -36,6 +39,25 @@ export default function WorkspaceHomePage() {
       localStorage.removeItem("bluesentinel_doc_chunks");
     }
     showToast("Demo scenario restored: Paradip Inbound Benchmark loaded.");
+  };
+
+  const handleSyncSupabase = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/seed");
+      const data = await res.json();
+      if (data.status === "CONNECTED") {
+        showToast("Supabase synced! Captain Sharma benchmark records verified.");
+      } else if (data.status === "DEMO_MODE") {
+        showToast("Operating in offline demo sandbox mode with Captain Sharma data.");
+      } else {
+        showToast(data.message || "Supabase seed processed.");
+      }
+    } catch {
+      showToast("Unable to reach seed endpoint. Continuing in local sandbox.");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const services = [
@@ -118,6 +140,30 @@ export default function WorkspaceHomePage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Supabase Connection Status Pill */}
+            {isConfigured ? (
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono font-medium bg-forest/10 dark:bg-paper-light/10 text-forest dark:text-paper-light border border-forest/20 dark:border-paper-light/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Supabase Live</span>
+              </span>
+            ) : (
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono font-medium bg-mustard/15 text-mustard border border-mustard/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-mustard" />
+                <span>Sandbox Mode</span>
+              </span>
+            )}
+
+            {/* Sync Database Button */}
+            <button
+              onClick={handleSyncSupabase}
+              disabled={isSyncing}
+              title="Sync Captain Sharma benchmark seed data to Supabase"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-forest/20 dark:border-paper-light/20 text-xs font-semibold text-forest/70 dark:text-paper-light/70 hover:border-forest/50 dark:hover:border-paper-light/50 transition-colors disabled:opacity-50"
+            >
+              <Database className="w-3.5 h-3.5 text-coral" />
+              <span>{isSyncing ? "Syncing..." : "Sync DB"}</span>
+            </button>
+
             {/* Reset Demo Button */}
             <button
               onClick={handleResetDemo}

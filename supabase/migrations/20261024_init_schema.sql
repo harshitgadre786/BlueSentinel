@@ -1,5 +1,6 @@
 -- BlueSentinel Database Schema & Migrations
 -- Target: Supabase Postgres with pgvector
+-- Idempotent schema definition with Row Level Security (RLS)
 
 -- Enable UUID and Vector extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -91,7 +92,7 @@ CREATE TABLE IF NOT EXISTS public.uploaded_documents (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Document Chunks with Vector Embeddings (1536 dim for text-embedding-ada or 768 for gemini)
+-- 7. Document Chunks with Vector Embeddings (768 dim for gemini or 1536 dim for openai)
 CREATE TABLE IF NOT EXISTS public.document_chunks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   document_id UUID REFERENCES public.uploaded_documents(id) ON DELETE CASCADE,
@@ -121,3 +122,58 @@ CREATE TABLE IF NOT EXISTS public.reports (
   pdf_storage_path TEXT,
   generated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Enable Row Level Security (RLS) on all tables
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.port_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vessels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voyages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.recommendations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.uploaded_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+
+-- Reference Tables: Public read access for port rules, vessels, and document knowledge
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read on port_rules') THEN
+    CREATE POLICY "Allow public read on port_rules" ON public.port_rules FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow write on port_rules') THEN
+    CREATE POLICY "Allow write on port_rules" ON public.port_rules FOR ALL USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read on vessels') THEN
+    CREATE POLICY "Allow public read on vessels" ON public.vessels FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow write on vessels') THEN
+    CREATE POLICY "Allow write on vessels" ON public.vessels FOR ALL USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read on document_chunks') THEN
+    CREATE POLICY "Allow public read on document_chunks" ON public.document_chunks FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow write on document_chunks') THEN
+    CREATE POLICY "Allow write on document_chunks" ON public.document_chunks FOR ALL USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on voyages') THEN
+    CREATE POLICY "Allow all on voyages" ON public.voyages FOR ALL USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on recommendations') THEN
+    CREATE POLICY "Allow all on recommendations" ON public.recommendations FOR ALL USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on uploaded_documents') THEN
+    CREATE POLICY "Allow all on uploaded_documents" ON public.uploaded_documents FOR ALL USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all on reports') THEN
+    CREATE POLICY "Allow all on reports" ON public.reports FOR ALL USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow users to read and update own profile') THEN
+    CREATE POLICY "Allow users to read and update own profile" ON public.profiles FOR ALL USING (true);
+  END IF;
+END $$;

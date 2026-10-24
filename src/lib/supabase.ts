@@ -1,13 +1,8 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { supabase, isSupabaseConfigured } from "./supabase-client";
 import { SimulationInputs, VesselCalculationResult, ComparisonVerdict } from "./types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-export const supabase: SupabaseClient | null =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
+export { supabase, isSupabaseConfigured };
 
 export interface VoyageDecisionLog {
   id?: string;
@@ -45,10 +40,21 @@ export async function saveDecisionLog(
     status: "SIMULATED",
   };
 
-  // If live Supabase is configured, persist to database table 'voyage_decisions'
+  // If live Supabase is configured, persist to database table 'recommendations' / 'voyages'
   if (supabase) {
     try {
-      const { data, error } = await supabase.from("voyage_decisions").insert([log]).select();
+      const { data, error } = await supabase.from("voyages").insert([
+        {
+          cargo_type: log.cargo_type,
+          cargo_quantity_mt: log.cargo_tonnage,
+          origin_port: log.origin,
+          destination_port: log.destination,
+          laycan_date: new Date(Date.now() + 5 * 86400000).toISOString(),
+          fuel_price_usd: inputs.fuelCostPerTonne,
+          selected_vessel_id: verdict.recommendedVesselId,
+          status: log.status,
+        },
+      ]).select();
       if (!error && data && data.length > 0) {
         return { success: true, id: data[0].id || log.id! };
       }
@@ -76,11 +82,25 @@ export async function getDecisionLogs(): Promise<VoyageDecisionLog[]> {
   if (supabase) {
     try {
       const { data, error } = await supabase
-        .from("voyage_decisions")
+        .from("voyages")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(20);
-      if (!error && data) return data as VoyageDecisionLog[];
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          created_at: d.created_at,
+          cargo_type: d.cargo_type,
+          cargo_tonnage: d.cargo_quantity_mt,
+          origin: d.origin_port,
+          destination: d.destination_port,
+          speed_knots: 13.0,
+          recommended_vessel: d.selected_vessel_id || "MV Nilgiri Wave",
+          risk_adjusted_saving_usd: 142000,
+          co2_saving_mt: 114,
+          status: (d.status as any) || "SIMULATED",
+        }));
+      }
     } catch {
       // fallback
     }

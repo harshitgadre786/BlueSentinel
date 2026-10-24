@@ -87,27 +87,58 @@ All routes are fully functional and return `HTTP 200 OK`:
 
 ## 🛠️ Setup & Environment Variables
 
-Copy `.env.example` to `.env.local`:
+BlueSentinel supports standard environment variables as well as the official **Vercel Supabase Integration** which automatically links your Supabase project to your Vercel deployment.
+
+### 1. Supported Variable Names
+The application dynamically resolves credentials across browser and server environments:
+
+| Variable Name | Environment | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_URL` | Client & Server | Your Supabase project URL (e.g. `https://xyzcompany.supabase.co`) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_ANON_KEY` | Client & Server | Public anonymous API key for client-side queries |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Service role key for administrative tasks (never exposed to client) |
+| `POSTGRES_URL` | Server only | Direct connection string injected by Vercel Supabase integration |
+| `NEXT_PUBLIC_SITE_URL` | Client & Server | OAuth callback root URL (e.g. `http://localhost:3000` or production domain) |
+| `NEXT_PUBLIC_GEMINI_API_KEY` / `GEMINI_API_KEY` | Server / Client | Optional Google Gemini key for live RAG synthesis |
+
+Copy `.env.example` to `.env.local` for local development:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Populate the keys:
-```env
-# Supabase Project Credentials (Authentication & Vector Storage)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+### 2. Database Schema & Migration Steps
 
-# Optional: Google Gemini API Key for Live AI Synthesis
-NEXT_PUBLIC_GEMINI_API_KEY=your-gemini-api-key
-GEMINI_API_KEY=your-gemini-api-key
+Apply migrations to your connected Supabase database via the **Supabase Dashboard SQL Editor** or the Supabase CLI:
 
-# Site URL for OAuth callbacks
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
+1. **Step 1 — Create Tables & RLS Policies**:
+   * Open the Supabase Dashboard -> **SQL Editor**.
+   * Run the contents of [`supabase/migrations/20261024_init_schema.sql`](file:///c:/Users/harsh/Downloads/Zinnovatio4.0/supabase/migrations/20261024_init_schema.sql).
+   * This creates all 8 core tables (`profiles`, `port_rules`, `vessels`, `voyages`, `recommendations`, `uploaded_documents`, `document_chunks`, `reports`), enables pgvector, and establishes Row Level Security (RLS) policies.
 
-> **Note**: If live Supabase or Gemini keys are not configured, BlueSentinel automatically runs in **Grounded Deterministic Engine Mode**, ensuring zero mathematical hallucinations and flawless offline evaluation for judges.
+2. **Step 2 — Seed Captain Sharma's Benchmark Data**:
+   * Run the contents of [`supabase/migrations/20261024_seed_captain_sharma.sql`](file:///c:/Users/harsh/Downloads/Zinnovatio4.0/supabase/migrations/20261024_seed_captain_sharma.sql).
+   * This populates:
+     * **75,000 MT Thermal Coal voyage** from Singapore (SGSIN) to Paradip (INPBD).
+     * Reference port rules with draft limits & UKC thresholds for Paradip, Kandla, and JNPT.
+     * Candidate vessels: Vessel A (MV Ocean Titan), Vessel B (MV Nilgiri Wave), and Vessel C (MV Bengal Pioneer).
+     * Complete deterministic recommendation record (Vessel A draft violation, Vessel B recommended safe, Vessel C demurrage delay risk).
+     * RAG knowledge chunks with exact page citations.
+
+3. **Step 3 — 1-Click In-App Sync**:
+   * You can also visit `/api/seed` or click the **"Sync DB"** button on the `/workspace` header to verify connectivity and seed data automatically.
+
+> **Offline Demo / Sandbox Mode**: If Supabase credentials are not provided or if offline, BlueSentinel gracefully falls back to deterministic sandbox mode with Captain Sharma's full dataset loaded in local storage, guaranteeing zero broken states or crashes.
+
+---
+
+## 🔒 Protected Workspace Security
+
+* All routes under `/workspace/*` are wrapped by `WorkspaceLayout` which enforces session verification.
+* Real users authenticated via Supabase Google OAuth or SMS OTP are automatically recognized.
+* Unauthenticated visitors are immediately redirected to `/login`.
+* Test operators can enter via the sandbox button without compromising production data.
+* **Security Notice**: Credentials, API tokens, and service role keys are never printed, logged, or committed to version control. All `.env*.local` files are strictly gitignored.
 
 ---
 
