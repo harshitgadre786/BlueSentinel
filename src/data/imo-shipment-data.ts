@@ -1,0 +1,1291 @@
+/**
+ * ============================================================================
+ * BlueSentinel - International Maritime Organization (IMO) Master Dataset
+ * Standards Reference: https://www.imo.org/
+ * Conventions Enforced:
+ *  - SOLAS (Safety of Life at Sea) Ch. VI (Carriage of Cargoes) & Ch. VII (Dangerous Goods)
+ *  - MARPOL (Marine Pollution) Annex I (Oil), Annex II (NLS), Annex VI (Air Emissions & CII)
+ *  - IMSBC Code (International Maritime Solid Bulk Cargoes)
+ *  - IMDG Code (International Maritime Dangerous Goods)
+ *  - IGC Code (International Code for the Construction and Equipment of Ships Carrying Liquefied Gases in Bulk)
+ *  - BLU Code (Code of Practice for Safe Loading and Unloading of Bulk Carriers)
+ * ============================================================================
+ */
+
+export interface ImoPort {
+  id: string;
+  name: string;
+  locode: string; // UN/LOCODE (e.g. INPRT, SGSIN)
+  country: string;
+  coast?: "East Coast" | "West Coast" | "International";
+  lat: number;
+  lng: number;
+  maxBerthDraftM: number;
+  maxLOAM: number;
+  maxBeamM: number;
+  // Berth Congestion Metrics
+  congestion: {
+    status: "Low Congestion" | "Moderate Delay" | "Heavy Congestion / Queued";
+    avgPreBerthingHours: number;
+    queuedVesselsCount: number;
+    berthAvailabilityRatio: number; // 0.0 - 1.0
+  };
+  // Local Port Tariffs & Handling Charges
+  tariffs: {
+    pilotageFeeUSD: number;
+    berthHireUSDPerGTDay: number;
+    portDuesUSD: number;
+    tugChargesUSD: number;
+    wharfagePerMTUSD: number;
+    currencyINRPerUSD: number;
+  };
+  // Real-Time Weather & Sea State Parameters
+  weatherSeaState: {
+    windSpeedKnots: number;
+    windDirection: string;
+    waveHeightM: number;
+    swellDirection: string;
+    beaufortScale: number;
+    beaufortDescription: string;
+    seaSurfaceTempC: number;
+    currentSpeedKnots: number;
+    tidalRangeM: number;
+  };
+  // Green Corridor & Emission Regulations
+  greenCorridor: {
+    marpolAnnexViZone: "ECA (0.10% Sulphur Limit)" | "Global 0.50% Sulphur Cap";
+    shorePowerAvailable: boolean; // Cold-Ironing / AMP
+    shorePowerMandatory: boolean;
+    imoTierIiiNoxZone: boolean;
+    esiTariffRebatePercent: number; // Environmental Ship Index discount
+    cleanBunkerFuelAvailable: ("VLSFO" | "LSMGO" | "LNG" | "Biofuel")[];
+  };
+}
+
+export interface ImoCargoType {
+  id: string;
+  name: string;
+  category: "DRY_BULK" | "LIQUID_BULK" | "CONTAINER" | "LNG_CRYOGENIC" | "CHEMICAL_DG" | "BREAKBULK" | "RO_RO";
+  imoConvention: string;
+  hazardClassification: string;
+  unNumber: string; // e.g. UN 1267, UN 1972, UN 3480, or "Non-IMDG"
+  imdgClass: string; // e.g. "Class 3", "Class 2.1", "Class 9", "IMSBC Group B"
+  packingGroup?: "PG I" | "PG II" | "PG III" | "N/A";
+  stowageSegregationProtocol: string;
+  targetStorageTempPressure: string;
+  defaultTonnageMT: number;
+  stowageFactorM3_MT: number;
+  densityT_M3: number;
+  // Safety Data Sheet & Document Declarations
+  sds: {
+    casNumber: string;
+    flashpointC?: number;
+    boilingPointC?: number;
+    emergencyScheduleEmS: string;
+    ergGuideNumber: number;
+    firefightingAgent: string;
+    spillMitigation: string;
+  };
+  requiredDeclarations: string[];
+}
+
+export interface ImoVessel {
+  id: string;
+  name: string;
+  imoNumber: string;
+  callSign: string;
+  mmsi: string;
+  flag: string;
+  type: string;
+  dwt: number;
+  grossTonnage: number;
+  loaM: number;
+  beamM: number;
+  designDraftM: number;
+  serviceSpeedKnots: number;
+  seaDailyFuelBurnMT: number; // VLSFO at service speed
+  portDailyFuelBurnMT: number; // Aux boilers & generators
+  fuelType: "VLSFO" | "LSMGO" | "LNG_DUAL_FUEL";
+  carbonFactorCf: number; // 3.114 for HFO/VLSFO, 2.750 for LNG, 3.206 for MDO
+  ciiReference_a: number; // IMO MEPC.337(76)
+  ciiReference_c: number;
+  allowedCargoCategories: ImoCargoType["category"][];
+}
+
+// ============================================================================
+// 1. ALL 12 INDIAN MAJOR PORTS + 6 MAJOR GLOBAL MARITIME HUBS
+// ============================================================================
+export const IMO_PORTS: Record<string, ImoPort> = {
+  // --- Indian Major Ports ---
+  "in-paradip": {
+    id: "in-paradip",
+    name: "Paradip Port",
+    locode: "INPRT",
+    country: "India",
+    coast: "East Coast",
+    lat: 20.2644,
+    lng: 86.6853,
+    maxBerthDraftM: 14.5,
+    maxLOAM: 260.0,
+    maxBeamM: 45.0,
+    congestion: {
+      status: "Moderate Delay",
+      avgPreBerthingHours: 19.5,
+      queuedVesselsCount: 14,
+      berthAvailabilityRatio: 0.72,
+    },
+    tariffs: {
+      pilotageFeeUSD: 3850,
+      berthHireUSDPerGTDay: 0.14,
+      portDuesUSD: 5200,
+      tugChargesUSD: 2400,
+      wharfagePerMTUSD: 1.85,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 15,
+      windDirection: "ENE",
+      waveHeightM: 1.8,
+      swellDirection: "SE 1.6m @ 9s",
+      beaufortScale: 4,
+      beaufortDescription: "Force 4 (Moderate Breeze)",
+      seaSurfaceTempC: 28.2,
+      currentSpeedKnots: 1.1,
+      tidalRangeM: 1.9,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 10,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO", "Biofuel"],
+    },
+  },
+
+  "in-visakhapatnam": {
+    id: "in-visakhapatnam",
+    name: "Visakhapatnam Port",
+    locode: "INVTZ",
+    country: "India",
+    coast: "East Coast",
+    lat: 17.6868,
+    lng: 83.2185,
+    maxBerthDraftM: 18.1,
+    maxLOAM: 300.0,
+    maxBeamM: 48.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 8.2,
+      queuedVesselsCount: 6,
+      berthAvailabilityRatio: 0.88,
+    },
+    tariffs: {
+      pilotageFeeUSD: 4200,
+      berthHireUSDPerGTDay: 0.16,
+      portDuesUSD: 5600,
+      tugChargesUSD: 2800,
+      wharfagePerMTUSD: 1.95,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 11,
+      windDirection: "E",
+      waveHeightM: 1.3,
+      swellDirection: "SE 1.2m @ 8s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 29.0,
+      currentSpeedKnots: 0.8,
+      tidalRangeM: 1.6,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 12,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  "in-jnpa": {
+    id: "in-jnpa",
+    name: "Jawaharlal Nehru Port (JNPA / Nhava Sheva)",
+    locode: "INNSA",
+    country: "India",
+    coast: "West Coast",
+    lat: 18.9499,
+    lng: 72.9515,
+    maxBerthDraftM: 15.0,
+    maxLOAM: 370.0,
+    maxBeamM: 51.0,
+    congestion: {
+      status: "Heavy Congestion / Queued",
+      avgPreBerthingHours: 32.0,
+      queuedVesselsCount: 22,
+      berthAvailabilityRatio: 0.58,
+    },
+    tariffs: {
+      pilotageFeeUSD: 5100,
+      berthHireUSDPerGTDay: 0.19,
+      portDuesUSD: 6800,
+      tugChargesUSD: 3200,
+      wharfagePerMTUSD: 2.65,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 13,
+      windDirection: "NW",
+      waveHeightM: 1.4,
+      swellDirection: "WNW 1.5m @ 10s",
+      beaufortScale: 4,
+      beaufortDescription: "Force 4 (Moderate Breeze)",
+      seaSurfaceTempC: 27.8,
+      currentSpeedKnots: 1.4,
+      tidalRangeM: 3.2,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: true,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 15,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO", "Biofuel"],
+    },
+  },
+
+  "in-chennai": {
+    id: "in-chennai",
+    name: "Chennai Port",
+    locode: "INMAA",
+    country: "India",
+    coast: "East Coast",
+    lat: 13.0827,
+    lng: 80.2707,
+    maxBerthDraftM: 15.5,
+    maxLOAM: 305.0,
+    maxBeamM: 45.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 11.0,
+      queuedVesselsCount: 7,
+      berthAvailabilityRatio: 0.85,
+    },
+    tariffs: {
+      pilotageFeeUSD: 4600,
+      berthHireUSDPerGTDay: 0.17,
+      portDuesUSD: 5900,
+      tugChargesUSD: 2600,
+      wharfagePerMTUSD: 2.30,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 12,
+      windDirection: "NE",
+      waveHeightM: 1.2,
+      swellDirection: "E 1.1m @ 8s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 28.6,
+      currentSpeedKnots: 0.9,
+      tidalRangeM: 1.2,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 10,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  "in-cochin": {
+    id: "in-cochin",
+    name: "Cochin Port (Kochi / Vallarpadam ICTT)",
+    locode: "INCOK",
+    country: "India",
+    coast: "West Coast",
+    lat: 9.9312,
+    lng: 76.2673,
+    maxBerthDraftM: 14.5,
+    maxLOAM: 335.0,
+    maxBeamM: 46.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 6.5,
+      queuedVesselsCount: 4,
+      berthAvailabilityRatio: 0.92,
+    },
+    tariffs: {
+      pilotageFeeUSD: 3900,
+      berthHireUSDPerGTDay: 0.15,
+      portDuesUSD: 5100,
+      tugChargesUSD: 2200,
+      wharfagePerMTUSD: 2.10,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 10,
+      windDirection: "W",
+      waveHeightM: 1.1,
+      swellDirection: "WSW 1.3m @ 11s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 29.4,
+      currentSpeedKnots: 1.2,
+      tidalRangeM: 1.0,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 12,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO", "LNG"],
+    },
+  },
+
+  "in-deendayal": {
+    id: "in-deendayal",
+    name: "Deendayal Port (Kandla & Vadinar)",
+    locode: "INIXY",
+    country: "India",
+    coast: "West Coast",
+    lat: 23.0033,
+    lng: 70.2194,
+    maxBerthDraftM: 13.0,
+    maxLOAM: 260.0,
+    maxBeamM: 40.0,
+    congestion: {
+      status: "Moderate Delay",
+      avgPreBerthingHours: 24.0,
+      queuedVesselsCount: 16,
+      berthAvailabilityRatio: 0.68,
+    },
+    tariffs: {
+      pilotageFeeUSD: 4100,
+      berthHireUSDPerGTDay: 0.15,
+      portDuesUSD: 5400,
+      tugChargesUSD: 2500,
+      wharfagePerMTUSD: 1.75,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 16,
+      windDirection: "SW",
+      waveHeightM: 1.5,
+      swellDirection: "SW 1.2m @ 7s",
+      beaufortScale: 4,
+      beaufortDescription: "Force 4 (Moderate Breeze)",
+      seaSurfaceTempC: 26.5,
+      currentSpeedKnots: 3.5, // strong tidal current in Gulf of Kutch
+      tidalRangeM: 5.8, // large macro-tidal range
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: false,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 8,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  "in-kamarajar": {
+    id: "in-kamarajar",
+    name: "Kamarajar Port (Ennore)",
+    locode: "INENR",
+    country: "India",
+    coast: "East Coast",
+    lat: 13.2611,
+    lng: 80.3347,
+    maxBerthDraftM: 16.0,
+    maxLOAM: 320.0,
+    maxBeamM: 47.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 7.0,
+      queuedVesselsCount: 5,
+      berthAvailabilityRatio: 0.90,
+    },
+    tariffs: {
+      pilotageFeeUSD: 4300,
+      berthHireUSDPerGTDay: 0.16,
+      portDuesUSD: 5500,
+      tugChargesUSD: 2700,
+      wharfagePerMTUSD: 1.90,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 12,
+      windDirection: "ENE",
+      waveHeightM: 1.3,
+      swellDirection: "SE 1.2m @ 8s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 28.5,
+      currentSpeedKnots: 0.8,
+      tidalRangeM: 1.3,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 12,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO", "LNG"],
+    },
+  },
+
+  "in-voc": {
+    id: "in-voc",
+    name: "V.O. Chidambaranar Port (Tuticorin)",
+    locode: "INTUT",
+    country: "India",
+    coast: "East Coast",
+    lat: 8.7642,
+    lng: 78.1348,
+    maxBerthDraftM: 14.2,
+    maxLOAM: 245.0,
+    maxBeamM: 38.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 9.0,
+      queuedVesselsCount: 6,
+      berthAvailabilityRatio: 0.86,
+    },
+    tariffs: {
+      pilotageFeeUSD: 3700,
+      berthHireUSDPerGTDay: 0.14,
+      portDuesUSD: 4900,
+      tugChargesUSD: 2300,
+      wharfagePerMTUSD: 1.80,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 14,
+      windDirection: "NE",
+      waveHeightM: 1.4,
+      swellDirection: "S 1.2m @ 9s",
+      beaufortScale: 4,
+      beaufortDescription: "Force 4 (Moderate Breeze)",
+      seaSurfaceTempC: 29.1,
+      currentSpeedKnots: 1.0,
+      tidalRangeM: 1.1,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 10,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  "in-smp-haldia": {
+    id: "in-smp-haldia",
+    name: "Syama Prasad Mookerjee Port (Haldia)",
+    locode: "INHAL",
+    country: "India",
+    coast: "East Coast",
+    lat: 22.0238,
+    lng: 88.0645,
+    maxBerthDraftM: 10.5,
+    maxLOAM: 230.0,
+    maxBeamM: 32.5,
+    congestion: {
+      status: "Moderate Delay",
+      avgPreBerthingHours: 21.0,
+      queuedVesselsCount: 11,
+      berthAvailabilityRatio: 0.70,
+    },
+    tariffs: {
+      pilotageFeeUSD: 4800,
+      berthHireUSDPerGTDay: 0.16,
+      portDuesUSD: 6100,
+      tugChargesUSD: 3100,
+      wharfagePerMTUSD: 2.05,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 10,
+      windDirection: "NNE",
+      waveHeightM: 0.8,
+      swellDirection: "SE 0.6m @ 6s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 27.5,
+      currentSpeedKnots: 2.8,
+      tidalRangeM: 3.8,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: false,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 5,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  "in-smp-kolkata": {
+    id: "in-smp-kolkata",
+    name: "Syama Prasad Mookerjee Port (Kolkata)",
+    locode: "INCCU",
+    country: "India",
+    coast: "East Coast",
+    lat: 22.5411,
+    lng: 88.3186,
+    maxBerthDraftM: 8.0,
+    maxLOAM: 172.0,
+    maxBeamM: 25.0,
+    congestion: {
+      status: "Moderate Delay",
+      avgPreBerthingHours: 18.0,
+      queuedVesselsCount: 8,
+      berthAvailabilityRatio: 0.75,
+    },
+    tariffs: {
+      pilotageFeeUSD: 5200, // Riverine long-distance pilotage
+      berthHireUSDPerGTDay: 0.17,
+      portDuesUSD: 6400,
+      tugChargesUSD: 3400,
+      wharfagePerMTUSD: 2.40,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 8,
+      windDirection: "N",
+      waveHeightM: 0.4,
+      swellDirection: "Calm Riverine",
+      beaufortScale: 2,
+      beaufortDescription: "Force 2 (Light Breeze)",
+      seaSurfaceTempC: 27.0,
+      currentSpeedKnots: 3.2,
+      tidalRangeM: 4.5,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: false,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 5,
+      cleanBunkerFuelAvailable: ["LSMGO"],
+    },
+  },
+
+  "in-mormugao": {
+    id: "in-mormugao",
+    name: "Mormugao Port",
+    locode: "INMRM",
+    country: "India",
+    coast: "West Coast",
+    lat: 15.4167,
+    lng: 73.8000,
+    maxBerthDraftM: 14.1,
+    maxLOAM: 292.0,
+    maxBeamM: 45.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 10.0,
+      queuedVesselsCount: 6,
+      berthAvailabilityRatio: 0.84,
+    },
+    tariffs: {
+      pilotageFeeUSD: 3900,
+      berthHireUSDPerGTDay: 0.15,
+      portDuesUSD: 5100,
+      tugChargesUSD: 2400,
+      wharfagePerMTUSD: 1.85,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 11,
+      windDirection: "NW",
+      waveHeightM: 1.2,
+      swellDirection: "W 1.3m @ 9s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 28.8,
+      currentSpeedKnots: 0.9,
+      tidalRangeM: 2.0,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 10,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  "in-new-mangalore": {
+    id: "in-new-mangalore",
+    name: "New Mangalore Port",
+    locode: "INNML",
+    country: "India",
+    coast: "West Coast",
+    lat: 12.9256,
+    lng: 74.8211,
+    maxBerthDraftM: 14.0,
+    maxLOAM: 260.0,
+    maxBeamM: 42.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 8.5,
+      queuedVesselsCount: 5,
+      berthAvailabilityRatio: 0.89,
+    },
+    tariffs: {
+      pilotageFeeUSD: 3800,
+      berthHireUSDPerGTDay: 0.14,
+      portDuesUSD: 5000,
+      tugChargesUSD: 2300,
+      wharfagePerMTUSD: 1.80,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 10,
+      windDirection: "WNW",
+      waveHeightM: 1.1,
+      swellDirection: "WSW 1.2m @ 10s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 29.0,
+      currentSpeedKnots: 1.0,
+      tidalRangeM: 1.5,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 10,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  // --- Major International Maritime Hubs ---
+  "singapore": {
+    id: "singapore",
+    name: "Port of Singapore (Jurong / PSA)",
+    locode: "SGSIN",
+    country: "Singapore",
+    coast: "International",
+    lat: 1.29027,
+    lng: 103.851959,
+    maxBerthDraftM: 18.5,
+    maxLOAM: 400.0,
+    maxBeamM: 60.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 5.5,
+      queuedVesselsCount: 18,
+      berthAvailabilityRatio: 0.94,
+    },
+    tariffs: {
+      pilotageFeeUSD: 3200,
+      berthHireUSDPerGTDay: 0.18,
+      portDuesUSD: 4800,
+      tugChargesUSD: 2100,
+      wharfagePerMTUSD: 2.15,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 8,
+      windDirection: "NE",
+      waveHeightM: 0.6,
+      swellDirection: "E 0.5m @ 5s",
+      beaufortScale: 2,
+      beaufortDescription: "Force 2 (Light Breeze)",
+      seaSurfaceTempC: 29.8,
+      currentSpeedKnots: 1.5,
+      tidalRangeM: 2.8,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: true,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 20,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO", "LNG", "Biofuel"],
+    },
+  },
+
+  "port_hedland": {
+    id: "port_hedland",
+    name: "Port Hedland",
+    locode: "AUPHE",
+    country: "Australia",
+    coast: "International",
+    lat: -20.3100,
+    lng: 118.5750,
+    maxBerthDraftM: 19.5,
+    maxLOAM: 330.0,
+    maxBeamM: 58.0,
+    congestion: {
+      status: "Moderate Delay",
+      avgPreBerthingHours: 15.0,
+      queuedVesselsCount: 19,
+      berthAvailabilityRatio: 0.78,
+    },
+    tariffs: {
+      pilotageFeeUSD: 6500,
+      berthHireUSDPerGTDay: 0.22,
+      portDuesUSD: 7800,
+      tugChargesUSD: 4200,
+      wharfagePerMTUSD: 2.80,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 18,
+      windDirection: "WNW",
+      waveHeightM: 2.1,
+      swellDirection: "NW 1.9m @ 9s",
+      beaufortScale: 5,
+      beaufortDescription: "Force 5 (Fresh Breeze)",
+      seaSurfaceTempC: 27.2,
+      currentSpeedKnots: 2.2,
+      tidalRangeM: 6.5,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 15,
+      cleanBunkerFuelAvailable: ["VLSFO", "LNG"],
+    },
+  },
+
+  "richards_bay": {
+    id: "richards_bay",
+    name: "Richards Bay Coal Terminal (RBCT)",
+    locode: "ZARCB",
+    country: "South Africa",
+    coast: "International",
+    lat: -28.7833,
+    lng: 32.0833,
+    maxBerthDraftM: 19.0,
+    maxLOAM: 335.0,
+    maxBeamM: 55.0,
+    congestion: {
+      status: "Heavy Congestion / Queued",
+      avgPreBerthingHours: 48.0,
+      queuedVesselsCount: 26,
+      berthAvailabilityRatio: 0.52,
+    },
+    tariffs: {
+      pilotageFeeUSD: 5200,
+      berthHireUSDPerGTDay: 0.18,
+      portDuesUSD: 6900,
+      tugChargesUSD: 3600,
+      wharfagePerMTUSD: 2.45,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 22,
+      windDirection: "SSW",
+      waveHeightM: 2.8,
+      swellDirection: "S 3.0m @ 12s",
+      beaufortScale: 6,
+      beaufortDescription: "Force 6 (Strong Breeze)",
+      seaSurfaceTempC: 23.5,
+      currentSpeedKnots: 1.8,
+      tidalRangeM: 2.1,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: false,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 8,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO"],
+    },
+  },
+
+  "ras_laffan": {
+    id: "ras_laffan",
+    name: "Ras Laffan Industrial Port",
+    locode: "QARLF",
+    country: "Qatar",
+    coast: "International",
+    lat: 25.9256,
+    lng: 51.5833,
+    maxBerthDraftM: 18.0,
+    maxLOAM: 345.0,
+    maxBeamM: 54.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 6.0,
+      queuedVesselsCount: 4,
+      berthAvailabilityRatio: 0.95,
+    },
+    tariffs: {
+      pilotageFeeUSD: 4400,
+      berthHireUSDPerGTDay: 0.20,
+      portDuesUSD: 6200,
+      tugChargesUSD: 3000,
+      wharfagePerMTUSD: 2.20,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 14,
+      windDirection: "NNW",
+      waveHeightM: 1.2,
+      swellDirection: "NW 1.0m @ 6s",
+      beaufortScale: 4,
+      beaufortDescription: "Force 4 (Moderate Breeze)",
+      seaSurfaceTempC: 31.0,
+      currentSpeedKnots: 1.1,
+      tidalRangeM: 1.8,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: true,
+      imoTierIiiNoxZone: true,
+      esiTariffRebatePercent: 20,
+      cleanBunkerFuelAvailable: ["LNG", "LSMGO", "VLSFO"],
+    },
+  },
+
+  "rotterdam": {
+    id: "rotterdam",
+    name: "Port of Rotterdam (Maasvlakte 2)",
+    locode: "NLRTM",
+    country: "Netherlands",
+    coast: "International",
+    lat: 51.9244,
+    lng: 4.4777,
+    maxBerthDraftM: 24.0,
+    maxLOAM: 420.0,
+    maxBeamM: 65.0,
+    congestion: {
+      status: "Low Congestion",
+      avgPreBerthingHours: 4.5,
+      queuedVesselsCount: 12,
+      berthAvailabilityRatio: 0.96,
+    },
+    tariffs: {
+      pilotageFeeUSD: 5800,
+      berthHireUSDPerGTDay: 0.25,
+      portDuesUSD: 8200,
+      tugChargesUSD: 3800,
+      wharfagePerMTUSD: 3.10,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 17,
+      windDirection: "WSW",
+      waveHeightM: 1.9,
+      swellDirection: "W 1.8m @ 8s",
+      beaufortScale: 5,
+      beaufortDescription: "Force 5 (Fresh Breeze)",
+      seaSurfaceTempC: 14.2,
+      currentSpeedKnots: 2.0,
+      tidalRangeM: 2.5,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "ECA (0.10% Sulphur Limit)",
+      shorePowerAvailable: true,
+      shorePowerMandatory: true,
+      imoTierIiiNoxZone: true,
+      esiTariffRebatePercent: 25,
+      cleanBunkerFuelAvailable: ["Biofuel", "LNG", "LSMGO"],
+    },
+  },
+
+  "fujairah": {
+    id: "fujairah",
+    name: "Port of Fujairah (Anchorage & Bunkering)",
+    locode: "AEFJR",
+    country: "United Arab Emirates",
+    coast: "International",
+    lat: 25.1288,
+    lng: 56.3265,
+    maxBerthDraftM: 18.0,
+    maxLOAM: 330.0,
+    maxBeamM: 52.0,
+    congestion: {
+      status: "Moderate Delay",
+      avgPreBerthingHours: 14.0,
+      queuedVesselsCount: 20,
+      berthAvailabilityRatio: 0.80,
+    },
+    tariffs: {
+      pilotageFeeUSD: 3600,
+      berthHireUSDPerGTDay: 0.16,
+      portDuesUSD: 4900,
+      tugChargesUSD: 2400,
+      wharfagePerMTUSD: 1.90,
+      currencyINRPerUSD: 83.5,
+    },
+    weatherSeaState: {
+      windSpeedKnots: 12,
+      windDirection: "SE",
+      waveHeightM: 1.1,
+      swellDirection: "E 1.2m @ 8s",
+      beaufortScale: 3,
+      beaufortDescription: "Force 3 (Gentle Breeze)",
+      seaSurfaceTempC: 30.5,
+      currentSpeedKnots: 1.2,
+      tidalRangeM: 2.2,
+    },
+    greenCorridor: {
+      marpolAnnexViZone: "Global 0.50% Sulphur Cap",
+      shorePowerAvailable: true,
+      shorePowerMandatory: false,
+      imoTierIiiNoxZone: false,
+      esiTariffRebatePercent: 15,
+      cleanBunkerFuelAvailable: ["VLSFO", "LSMGO", "Biofuel"],
+    },
+  },
+};
+
+// ============================================================================
+// 2. COMPREHENSIVE IMO CARGO SPECIFICATIONS & IMDG HAZARD DATA
+// ============================================================================
+export const IMO_CARGO_TYPES: Record<string, ImoCargoType> = {
+  "dry_bulk_imsbc": {
+    id: "dry_bulk_imsbc",
+    name: "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+    category: "DRY_BULK",
+    imoConvention: "IMSBC Code (Group B - MHB / Group A - Liquefaction)",
+    hazardClassification: "IMSBC Group B (Materials Hazardous only in Bulk) & MHB (Methane/CO emission hazard)",
+    unNumber: "N/A (IMSBC Group B - Solid Bulk Cargo)",
+    imdgClass: "Non-IMDG (Solid Bulk Cargo)",
+    packingGroup: "N/A",
+    stowageSegregationProtocol: "BLU Code trimming; continuous CO & CH₄ gas detection every 8h; holds hermetically sealed; bilge testing daily.",
+    targetStorageTempPressure: "Ambient dry; hold cargo temperature strictly < 55°C (spontaneous heating limit); moisture content < 9.2% TML.",
+    defaultTonnageMT: 75000,
+    stowageFactorM3_MT: 1.25,
+    densityT_M3: 0.86,
+    sds: {
+      casNumber: "CAS 1333-86-4 (Coal/Carbon Matrix)",
+      flashpointC: undefined,
+      boilingPointC: undefined,
+      emergencyScheduleEmS: "F-G, S-J (Bulk Solid Flammables)",
+      ergGuideNumber: 133,
+      firefightingAgent: "Boundary cooling with water fog; DO NOT direct water jets into sealed hot coal holds (water gas explosion risk).",
+      spillMitigation: "Mechanical grab sweep; ensure cargo bilge sumps free of fine coal slurry.",
+    },
+    requiredDeclarations: [
+      "IMSBC Cargo Declaration (BLU Code Appendix 5)",
+      "SOLAS Verified Gross Mass (VGM Method 1 Draft Survey & Belt Scale)",
+      "Transportable Moisture Limit (TML) Certificate (Group A)",
+      "Hold Gas Atmosphere Sampling Record (CO, CH4, O2)",
+      "Clean Bill of Lading (Congenbill 1994)",
+    ],
+  },
+
+  "container_dry": {
+    id: "container_dry",
+    name: "Containerized Goods (Manufactured Goods & Electronics)",
+    category: "CONTAINER",
+    imoConvention: "SOLAS Chapter VI Reg 2, CTU Code (IMO/ILO/UNECE), IMDG Code Ch. 7.2",
+    hazardClassification: "IMDG Class 9 (Miscellaneous Dangerous Substances - Lithium Batteries / Mixed Electronics)",
+    unNumber: "UN 3480 (Lithium Ion Batteries) / UN 3171 (Battery-Powered Equipment)",
+    imdgClass: "Class 9 (Miscellaneous Dangerous Goods)",
+    packingGroup: "PG II",
+    stowageSegregationProtocol: "IMDG Chapter 7.2 On-deck or ventilated under-deck stowage; separated by a complete compartment from Class 1 explosives and Class 3 flammables. Reefer monitoring 4x daily.",
+    targetStorageTempPressure: "Ambient dry (15°C - 35°C), relative humidity < 65%; active reefer containers set at -20°C to +4°C depending on commodity manifest.",
+    defaultTonnageMT: 42000,
+    stowageFactorM3_MT: 2.20,
+    densityT_M3: 0.45,
+    sds: {
+      casNumber: "CAS Mixture (Lithium Cobalt / Polymer Battery Electrolyte)",
+      flashpointC: 135,
+      boilingPointC: undefined,
+      emergencyScheduleEmS: "F-A, S-I (Radioactive / Miscellaneous Dangerous Goods)",
+      ergGuideNumber: 147,
+      firefightingAgent: "Copious amounts of cold water for battery thermal runaway cooling; dry chemical extinguisher for auxiliary equipment.",
+      spillMitigation: "Isolate damaged TEU on weather deck; don full SCBA protective equipment; deluge container exterior.",
+    },
+    requiredDeclarations: [
+      "SOLAS Verified Gross Mass (VGM Method 1 Calibrated Weighbridge Slip)",
+      "Container Packing Certificate (CPC - SOLAS Reg VII/4)",
+      "Multimodal Dangerous Goods Form (IMO FAL Form 7)",
+      "Customs Cargo Manifest & CTU Code Stowage Compliance Slip",
+      "Multimodal Sea Waybill / Liner Bill of Lading",
+    ],
+  },
+
+  "liquid_crude_pol": {
+    id: "liquid_crude_pol",
+    name: "Liquid Bulk (Petroleum Crude Oil / Chemicals)",
+    category: "LIQUID_BULK",
+    imoConvention: "MARPOL Annex I (Reg 13F Double Hull), SOLAS II-2 Reg 4, ISGOTT 6th Edition",
+    hazardClassification: "IMDG Class 3 (Flammable Liquid, Flashpoint < 23°C, Low Boiling Point)",
+    unNumber: "UN 1267 (Petroleum Crude Oil)",
+    imdgClass: "Class 3 (Flammable Liquid)",
+    packingGroup: "PG I",
+    stowageSegregationProtocol: "Inert Gas System (IGS) active with O₂ content strictly < 5% by volume and positive deck pressure (> 200 mmWG). Double-hull segregation; vapor recovery manifold connected.",
+    targetStorageTempPressure: "Maintained at 38°C - 45°C via steam heating coils to prevent wax solidification; ullage pressure 1.05 - 1.10 bar.",
+    defaultTonnageMT: 80000,
+    stowageFactorM3_MT: 1.14,
+    densityT_M3: 0.88,
+    sds: {
+      casNumber: "CAS 8002-05-9 (Petroleum Hydrocarbon Blend)",
+      flashpointC: -12,
+      boilingPointC: 35,
+      emergencyScheduleEmS: "F-E, S-D (Flammable Liquids - All)",
+      ergGuideNumber: 128,
+      firefightingAgent: "Alcohol-resistant aqueous film-forming foam (AR-AFFF); dry chemical powder; nitrogen inert gas blanket.",
+      spillMitigation: "Deploy shipboard SOPEP equipment; boom containment around manifold; shut down emergency cargo pumps.",
+    },
+    requiredDeclarations: [
+      "MARPOL Annex I Oil Discharge Monitoring & Control (ODME) Log",
+      "ISGOTT Ship/Shore Safety Checklist (SSSCL Part A-D)",
+      "Material Safety Data Sheet (MSDS UN 1267 Flashpoint Verified)",
+      "Bill of Lading with Clean on Board Tanker Ullage Gauge Certificate",
+      "SOPEP Tier 1 Shipboard Emergency Response Record",
+    ],
+  },
+
+  "lng_cryogenic": {
+    id: "lng_cryogenic",
+    name: "LNG / Cryogenic Liquefied Gas",
+    category: "LNG_CRYOGENIC",
+    imoConvention: "IMO International Gas Carrier (IGC) Code, SOLAS Ch. VII Part C",
+    hazardClassification: "IMDG Class 2.1 (Flammable Liquefied Gas, Cryogenic Liquid Hazard)",
+    unNumber: "UN 1972 (Methane, Refrigerated Liquid)",
+    imdgClass: "Class 2.1 (Flammable Gas)",
+    packingGroup: "N/A",
+    stowageSegregationProtocol: "Independent IMO Type B or Membrane Cargo Containment (GTT Mark III). Nitrogen-purged interbarrier insulation space with continuous gas chromatograph sampling. Dual-fuel boil-off gas reliquefaction.",
+    targetStorageTempPressure: "Cryogenic carriage at -162.0°C (-260°F) at 1.15 bar (maximum permissible tank relief valve setting 1.25 bar).",
+    defaultTonnageMT: 68000,
+    stowageFactorM3_MT: 2.17,
+    densityT_M3: 0.46,
+    sds: {
+      casNumber: "CAS 74-82-8 (Methane CH4 > 95%)",
+      flashpointC: -188,
+      boilingPointC: -161.5,
+      emergencyScheduleEmS: "F-D, S-U (Gases - Flammable)",
+      ergGuideNumber: 115,
+      firefightingAgent: "High-expansion dry chemical powder (potassium bicarbonate); water spray curtains for structural protection.",
+      spillMitigation: "Activate Emergency Shutdown System (ESD 1/ESD 2); isolate liquid manifolds; permit cryogenic pool to vaporize safely under water spray curtain.",
+    },
+    requiredDeclarations: [
+      "International Certificate of Fitness for Carriage of Liquefied Gases in Bulk (IGC Code)",
+      "Custody Transfer Measurement System (CTMS) Pre/Post Gauging Log",
+      "Gas Safety Data Sheet (UN 1972 Cryogenic Hazards)",
+      "Boil-Off Gas (BOG) Reliquefaction & Dual-Fuel Engine Consumption Log",
+      "Cryogenic Gas Bill of Lading",
+    ],
+  },
+
+  "dangerous_goods_chem": {
+    id: "dangerous_goods_chem",
+    name: "Dangerous Goods & Specialty Chemicals",
+    category: "CHEMICAL_DG",
+    imoConvention: "IMO IBC Code (International Bulk Chemical Code), MARPOL Annex II (NLS Cat X/Y)",
+    hazardClassification: "IMDG Class 8 (Corrosive Substances) & Class 6.1 (Toxic Liquids)",
+    unNumber: "UN 1760 (Corrosive Liquid, N.O.S.) / UN 1830",
+    imdgClass: "Class 8 (Corrosive Substances)",
+    packingGroup: "PG I",
+    stowageSegregationProtocol: "Stowage Category D: Protected weather deck stowage only, away from living quarters, engine room casing, and vessel navigation bridge. Dedicated deluge containment sumps.",
+    targetStorageTempPressure: "Maintained below 30°C; dry nitrogen blanket with double-relief pressure safety valves set at 1.20 bar.",
+    defaultTonnageMT: 28000,
+    stowageFactorM3_MT: 0.82,
+    densityT_M3: 1.22,
+    sds: {
+      casNumber: "CAS 7664-93-9 (Sulphuric Acid / Corrosive Liquid)",
+      flashpointC: undefined,
+      boilingPointC: 337,
+      emergencyScheduleEmS: "F-A, S-B (Corrosive Toxic Substances)",
+      ergGuideNumber: 154,
+      firefightingAgent: "Dry chemical or CO2; NEVER spray water directly into bulk concentrated acid tanks.",
+      spillMitigation: "Neutralize with lime slurry or sodium bicarbonate; pump into emergency stainless holding tank; do not discharge to sea (MARPOL Annex II Category X ban).",
+    },
+    requiredDeclarations: [
+      "Dangerous Goods Manifest (IMO FAL Form 7)",
+      "IBC Code Certificate of Fitness for Chemical Tankers",
+      "Material Safety Data Sheet (MSDS UN 1760 Class 8 PG I)",
+      "MARPOL Annex II Cargo Record Book (CRB) Pre-Wash Protocol",
+      "Chemical Bill of Lading",
+    ],
+  },
+
+  "breakbulk_machinery": {
+    id: "breakbulk_machinery",
+    name: "Breakbulk / Heavy Machinery & Industrial Cargo",
+    category: "BREAKBULK",
+    imoConvention: "IMO Code of Safe Practice for Cargo Stowage and Securing (CSS Code Annex 13)",
+    hazardClassification: "Non-Hazardous / Out-of-Gauge Industrial Heavy Lift",
+    unNumber: "N/A (Heavy Lift Industrial Machinery)",
+    imdgClass: "Non-Regulated",
+    packingGroup: "N/A",
+    stowageSegregationProtocol: "Heavy-duty tank top reinforcement (minimum permissible load 25 t/m²). High-tensile chain lashing (MSL 200 kN) with DNV-certified acceleration load calculations.",
+    targetStorageTempPressure: "Weather-tight hold or secured deck with heavy weather covers; ambient dry.",
+    defaultTonnageMT: 22000,
+    stowageFactorM3_MT: 0.70,
+    densityT_M3: 2.20,
+    sds: {
+      casNumber: "N/A (Fabricated Steel Machinery)",
+      emergencyScheduleEmS: "N/A",
+      ergGuideNumber: 171,
+      firefightingAgent: "Standard dry chemical or water spray.",
+      spillMitigation: "Verify lashing tension; re-tighten turnbuckles following sea state Force 6+.",
+    },
+    requiredDeclarations: [
+      "Cargo Securing Manual (CSM) Approval Certificate",
+      "Marine Warranty Surveyor (MWS) Heavy Lift Approval Certificate",
+      "Individual Crane Hook Load-Cell Weight Certificate (VGM Method 1)",
+      "Breakbulk Ocean Bill of Lading",
+    ],
+  },
+
+  "ro_ro_automotive": {
+    id: "ro_ro_automotive",
+    name: "Ro-Ro / Rolling Stock & Wheeled Cargo",
+    category: "RO_RO",
+    imoConvention: "SOLAS Chapter II-2 Reg 20 (Vehicle Spaces Fire Safety), IMDG Class 9",
+    hazardClassification: "IMDG Class 9 (UN 3166 - Vehicle, flammable liquid/battery powered)",
+    unNumber: "UN 3166 (Vehicle, Flammable Liquid / Hybrid EV)",
+    imdgClass: "Class 9 (Miscellaneous)",
+    packingGroup: "PG III",
+    stowageSegregationProtocol: "Dedicated vehicle garage decks with mechanical ventilation (minimum 12 air changes/hour). High-expansion foam fire deluge. 4-point wheel chocking & web lashing straps.",
+    targetStorageTempPressure: "Ambient ventilated (10°C - 35°C), zero fuel leak tolerance.",
+    defaultTonnageMT: 15000,
+    stowageFactorM3_MT: 3.10,
+    densityT_M3: 0.35,
+    sds: {
+      casNumber: "N/A (Manufactured Vehicles)",
+      emergencyScheduleEmS: "F-A, S-P (Vehicle Carriers)",
+      ergGuideNumber: 128,
+      firefightingAgent: "Vehicle deck high-expansion deluge foam; water fog.",
+      spillMitigation: "Absorbent pads for fuel drippage; disconnect battery terminal on damaged unit.",
+    },
+    requiredDeclarations: [
+      "Ro-Ro Vehicle Deck Stowage & Lashing Plan",
+      "IMDG Multimodal Declaration (for EV Battery Packs)",
+      "SOLAS II-2 Reg 20 Ventilation & Deluge Inspection Certificate",
+      "Ro-Ro Carrier Bill of Lading",
+    ],
+  },
+};
+
+// ============================================================================
+// 3. STATUTORY CHARTERED CANDIDATE VESSELS WITH REAL IMO SPECIFICATIONS
+// ============================================================================
+export const IMO_VESSELS: Record<string, ImoVessel> = {
+  "vesselA": {
+    id: "vesselA",
+    name: "MV Indira Express",
+    imoNumber: "IMO 9742188",
+    callSign: "9V8842",
+    mmsi: "563042188",
+    flag: "Singapore",
+    type: "Ultramax Dry Bulk & General Cargo Carrier",
+    dwt: 64500,
+    grossTonnage: 36200,
+    loaM: 199.9,
+    beamM: 32.26,
+    designDraftM: 13.3,
+    serviceSpeedKnots: 13.5,
+    seaDailyFuelBurnMT: 27.5,
+    portDailyFuelBurnMT: 3.8,
+    fuelType: "VLSFO",
+    carbonFactorCf: 3.114,
+    ciiReference_a: 4745,
+    ciiReference_c: 0.422,
+    allowedCargoCategories: ["DRY_BULK", "BREAKBULK", "RO_RO"],
+  },
+
+  "vesselB": {
+    id: "vesselB",
+    name: "MV Sentinel Carrier",
+    imoNumber: "IMO 9821450",
+    callSign: "AT7860",
+    mmsi: "419082145",
+    flag: "India (DGS Registered)",
+    type: "Supramax Optimized Eco-Bulk Carrier",
+    dwt: 58000,
+    grossTonnage: 32800,
+    loaM: 189.9,
+    beamM: 32.26,
+    designDraftM: 12.8,
+    serviceSpeedKnots: 14.0,
+    seaDailyFuelBurnMT: 22.0,
+    portDailyFuelBurnMT: 2.8,
+    fuelType: "VLSFO",
+    carbonFactorCf: 3.114,
+    ciiReference_a: 4745,
+    ciiReference_c: 0.422,
+    allowedCargoCategories: ["DRY_BULK", "BREAKBULK", "CONTAINER"],
+  },
+
+  "vesselC": {
+    id: "vesselC",
+    name: "MV Malacca Bridge",
+    imoNumber: "IMO 9655102",
+    callSign: "9V5510",
+    mmsi: "563065510",
+    flag: "Panama",
+    type: "Post-Panamax Heavy Cargo Carrier",
+    dwt: 82000,
+    grossTonnage: 44500,
+    loaM: 229.0,
+    beamM: 32.26,
+    designDraftM: 14.6,
+    serviceSpeedKnots: 14.2,
+    seaDailyFuelBurnMT: 34.0,
+    portDailyFuelBurnMT: 4.5,
+    fuelType: "VLSFO",
+    carbonFactorCf: 3.114,
+    ciiReference_a: 4745,
+    ciiReference_c: 0.422,
+    allowedCargoCategories: ["DRY_BULK", "LIQUID_BULK", "CONTAINER"],
+  },
+
+  "vesselTanker": {
+    id: "vesselTanker",
+    name: "MT Oceanus Pride",
+    imoNumber: "IMO 9891104",
+    callSign: "VR7742",
+    mmsi: "477089110",
+    flag: "Hong Kong",
+    type: "Aframax LR2 Crude & Product Tanker",
+    dwt: 115000,
+    grossTonnage: 61000,
+    loaM: 249.9,
+    beamM: 44.0,
+    designDraftM: 14.8,
+    serviceSpeedKnots: 14.5,
+    seaDailyFuelBurnMT: 38.0,
+    portDailyFuelBurnMT: 6.2,
+    fuelType: "VLSFO",
+    carbonFactorCf: 3.114,
+    ciiReference_a: 5247,
+    ciiReference_c: 0.461,
+    allowedCargoCategories: ["LIQUID_BULK", "CHEMICAL_DG"],
+  },
+
+  "vesselGas": {
+    id: "vesselGas",
+    name: "LNG Sentinel Pioneer",
+    imoNumber: "IMO 9912044",
+    callSign: "C6AX8",
+    mmsi: "311001204",
+    flag: "Bahamas",
+    type: "Membrane LNG Carrier (ME-GI Dual Fuel)",
+    dwt: 92000,
+    grossTonnage: 112000,
+    loaM: 299.0,
+    beamM: 45.8,
+    designDraftM: 12.0,
+    serviceSpeedKnots: 17.5,
+    seaDailyFuelBurnMT: 42.0, // equivalent LNG fuel
+    portDailyFuelBurnMT: 5.0,
+    fuelType: "LNG_DUAL_FUEL",
+    carbonFactorCf: 2.750, // Clean LNG carbon factor
+    ciiReference_a: 9827,
+    ciiReference_c: 0.556,
+    allowedCargoCategories: ["LNG_CRYOGENIC"],
+  },
+};

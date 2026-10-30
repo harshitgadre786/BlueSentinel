@@ -7,6 +7,7 @@ import { getDecisionLogs, VoyageDecisionLog } from "@/lib/supabase";
 import { useEffect } from "react";
 import ThemeToggle from "../../components/ThemeToggle";
 import { CoralStar } from "../../components/editorial/EditorialMarks";
+import ImoShipmentDashboard from "@/components/ImoShipmentDashboard";
 import {
   Compass,
   Ship,
@@ -222,7 +223,7 @@ export default function WorkspaceHomePage() {
           <div className="pt-1 flex flex-wrap items-center gap-3 text-xs font-mono text-forest/70 dark:text-paper-light/70">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-forest/5 dark:bg-paper-light/5 border border-forest/15 dark:border-paper-light/15">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Paradip Port Notice #2026/02 Synced</span>
+              <span>IMO Conventions & Port Notices Synced</span>
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-forest/5 dark:bg-paper-light/5 border border-forest/15 dark:border-paper-light/15">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -231,8 +232,26 @@ export default function WorkspaceHomePage() {
           </div>
         </section>
 
+        {/* DYNAMIC IMO SHIPMENT & FLEET INTELLIGENCE CONSOLE */}
+        <ImoShipmentDashboard />
+
         {/* 6 WORKING SERVICE TILES */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-4 border-t border-forest/15 dark:border-paper-light/15">
+        <section className="space-y-6 pt-8 border-t border-forest/15 dark:border-paper-light/15">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-forest dark:text-paper-light">
+                Core Maritime Services
+              </h2>
+              <span className="text-xs text-forest/60 dark:text-paper-light/60 font-sans">
+                Statutory decision support, charter comparison, and autonomous AI copilot
+              </span>
+            </div>
+            <span className="text-xs text-forest/40 dark:text-paper-light/40 font-mono uppercase tracking-wider">
+              OPERATIONAL SUITE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((svc) => {
             const Icon = svc.icon;
             return (
@@ -268,6 +287,7 @@ export default function WorkspaceHomePage() {
               </Link>
             );
           })}
+          </div>
         </section>
 
         {/* RECENT ACTIVITY & AUDIT SECTION */}
@@ -344,11 +364,11 @@ export default function WorkspaceHomePage() {
                     <td className="py-3.5 px-4 font-bold text-forest dark:text-paper-light">
                       <div>75,000 MT Thermal Coal</div>
                       <div className="text-[10px] font-mono text-forest/50 dark:text-paper-light/50 mt-0.5">
-                        Singapore (SGSIN) ➔ Paradip (INPBD)
+                        Singapore (SGSIN) ➔ Paradip Port (INPRT)
                       </div>
                     </td>
                     <td className="py-3.5 px-4 font-mono font-medium text-forest/80 dark:text-paper-light/80">
-                      Paradip Port (INPBD)
+                      Paradip Port (INPRT)
                     </td>
                     <td className="py-3.5 px-4 font-bold text-forest dark:text-paper-light flex items-center gap-1.5 pt-4">
                       <Ship className="w-3.5 h-3.5 text-coral shrink-0" />
