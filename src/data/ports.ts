@@ -267,6 +267,50 @@ export const INDIAN_MAJOR_PORTS: MajorPort[] = [
   },
 ];
 
+export interface InternationalHub {
+  id: string;
+  name: string;
+  code: string; // UN/LOCODE
+  country: string;
+  defaultDistanceNM: number;
+}
+
+export const INTERNATIONAL_LOADING_HUBS: InternationalHub[] = [
+  { id: "singapore", name: "Port of Singapore", code: "SGSIN", country: "Singapore", defaultDistanceNM: 1650 },
+  { id: "port_hedland", name: "Port Hedland", code: "AUPHE", country: "Australia", defaultDistanceNM: 3680 },
+  { id: "richards_bay", name: "Richards Bay", code: "ZARCB", country: "South Africa", defaultDistanceNM: 4850 },
+  { id: "ras_laffan", name: "Ras Laffan", code: "QARLF", country: "Qatar", defaultDistanceNM: 2580 },
+  { id: "rotterdam", name: "Port of Rotterdam", code: "NLRTM", country: "Netherlands", defaultDistanceNM: 6850 },
+];
+
+/**
+ * Sequential nautical mile distances along the Indian coastline from East to West (Kolkata -> Kandla)
+ * Used to compute precise coastal cabotage distances between any two domestic Indian ports.
+ */
+export const INDIAN_COASTAL_CHAIN_NM: Record<string, number> = {
+  "in-smp-kolkata": 0,
+  "in-smp-haldia": 50,
+  "in-paradip": 200,
+  "in-visakhapatnam": 460,
+  "in-kamarajar": 770,
+  "in-chennai": 790,
+  "in-voc": 1140,
+  "in-cochin": 1340,
+  "in-new-mangalore": 1540,
+  "in-mormugao": 1710,
+  "in-mumbai": 1950,
+  "in-jnpa": 1950,
+  "in-deendayal": 2290,
+};
+
+export function getInternationalHub(idOrCode: string): InternationalHub | undefined {
+  if (!idOrCode) return undefined;
+  const clean = idOrCode.toLowerCase().trim();
+  return INTERNATIONAL_LOADING_HUBS.find(
+    (h) => h.id.toLowerCase() === clean || h.code.toLowerCase() === clean || h.name.toLowerCase().includes(clean)
+  );
+}
+
 /**
  * Normalizes user-selected cargo string into one of the 4 statutory CargoCategory types
  */
@@ -289,13 +333,57 @@ export function normalizeCargoCategory(cargo: string): CargoCategory {
  * Retrieve a port by either its new id (e.g. "in-paradip") or legacy id ("paradip") or code ("INPRT")
  */
 export function getMajorPort(portIdOrCode: string): MajorPort | undefined {
-  const query = portIdOrCode.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  if (!portIdOrCode) return undefined;
+  const clean = portIdOrCode.toLowerCase().trim();
+  
+  // Exact match
+  const direct = INDIAN_MAJOR_PORTS.find(
+    (p) => p.id.toLowerCase() === clean || p.code.toLowerCase() === clean
+  );
+  if (direct) return direct;
+
+  // Specific alias mappings
+  const aliases: Record<string, string> = {
+    paradip: "in-paradip",
+    visakhapatnam: "in-visakhapatnam",
+    vizag: "in-visakhapatnam",
+    kamarajar: "in-kamarajar",
+    ennore: "in-kamarajar",
+    chennai: "in-chennai",
+    maa: "in-chennai",
+    voc: "in-voc",
+    tuticorin: "in-voc",
+    voc_chidambaranar: "in-voc",
+    haldia: "in-smp-haldia",
+    "in-haldia": "in-smp-haldia",
+    kolkata: "in-smp-kolkata",
+    "in-kolkata": "in-smp-kolkata",
+    jnpa: "in-jnpa",
+    jnpt: "in-jnpa",
+    "in-jnpt": "in-jnpa",
+    nhava_sheva: "in-jnpa",
+    deendayal: "in-deendayal",
+    kandla: "in-deendayal",
+    "in-kandla": "in-deendayal",
+    inixy: "in-deendayal",
+    inixx: "in-deendayal",
+    mumbai: "in-mumbai",
+    mormugao: "in-mormugao",
+    goa: "in-mormugao",
+    new_mangalore: "in-new-mangalore",
+    "new-mangalore": "in-new-mangalore",
+    mangalore: "in-new-mangalore",
+    cochin: "in-cochin",
+    kochi: "in-cochin",
+  };
+  if (aliases[clean]) {
+    return INDIAN_MAJOR_PORTS.find((p) => p.id === aliases[clean]);
+  }
+
   return INDIAN_MAJOR_PORTS.find(
     (p) =>
-      p.id.toLowerCase() === query ||
-      p.code.toLowerCase() === query ||
-      p.id.replace("in-", "").toLowerCase() === query ||
-      p.name.toLowerCase().includes(query)
+      p.id.replace("in-", "").toLowerCase() === clean ||
+      p.name.toLowerCase().includes(clean)
   );
 }
 

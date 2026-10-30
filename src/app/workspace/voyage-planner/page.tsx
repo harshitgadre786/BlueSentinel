@@ -11,6 +11,8 @@ import {
   getVesselsForCargo,
   getPortRule,
   getVoyageDistance,
+  INTERNATIONAL_LOADING_HUBS,
+  getInternationalHub,
 } from "@/lib/maritime-calculator";
 import {
   INDIAN_MAJOR_PORTS,
@@ -29,6 +31,7 @@ import {
   ArrowRight,
   Info,
   ShieldCheck,
+  ShieldAlert,
   RotateCcw,
   CheckCircle2,
   AlertTriangle,
@@ -89,8 +92,28 @@ export default function VoyagePlannerPage() {
   }, [inputs.cargoType, inputs.selectedVesselId]);
 
   const selectedMajorPort = getMajorPort(inputs.destinationPortId) || INDIAN_MAJOR_PORTS[0];
+  const selectedOriginMajor = getMajorPort(inputs.originPortId);
+  const selectedOriginHub = getInternationalHub(inputs.originPortId);
   const selectedPort = getPortRule(inputs.destinationPortId);
   const compatibility = validateTerminalCargoCompatibility(inputs.destinationPortId, inputs.cargoType);
+
+  // Dynamic Validation Rules
+  // 1. Same Port Block
+  const isSamePort = inputs.originPortId === inputs.destinationPortId ||
+    (!!selectedOriginMajor && !!selectedMajorPort && selectedOriginMajor.id === selectedMajorPort.id);
+
+  // 2. Dynamic Distance & Days
+  const voyageNM = getVoyageDistance(inputs.originPortId, inputs.destinationPortId);
+  const vesselSpeed = selectedVessel?.averageSpeed || 14.0;
+  const transitDays = voyageNM > 0 ? Number((voyageNM / (vesselSpeed * 24)).toFixed(1)) : 0;
+  const transitHours = voyageNM > 0 ? Math.round(voyageNM / vesselSpeed) : 0;
+  const isDomesticVoyage = !!selectedOriginMajor && !!selectedMajorPort;
+
+  // 3. Draft Check
+  const effectiveDraft = inputs.targetDraftM || selectedVessel?.loadedDraft || 13.3;
+  const maxBerthDraft = selectedMajorPort.maxBerthDraftM;
+  const isDraftExceeded = effectiveDraft > maxBerthDraft;
+  const draftDifferenceM = Math.abs(Number((effectiveDraft - maxBerthDraft).toFixed(2)));
 
   // Handle Cargo Selection change with auto-parameters
   const handleCargoTypeChange = (selectedName: string) => {
@@ -138,6 +161,10 @@ export default function VoyagePlannerPage() {
 
   const handleProceedToComparison = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSamePort) {
+      alert("Origin and Destination cannot be identical. Please select different ports for coastal transit.");
+      return;
+    }
     if (typeof window !== "undefined") {
       localStorage.setItem("bluesentinel_voyage_inputs", JSON.stringify(inputs));
     }
@@ -241,57 +268,179 @@ export default function VoyagePlannerPage() {
 
               {/* Origin Port */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5 text-mustard" />
-                  Origin Port (Loading Hub)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 text-mustard" />
+                    Origin Port (Loading Hub)
+                  </label>
+                  {selectedOriginMajor ? (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                      COASTAL HUB
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 font-bold border border-blue-500/20">
+                      INTL HUB
+                    </span>
+                  )}
+                </div>
                 <select
                   value={inputs.originPortId}
                   onChange={(e) => setInputs({ ...inputs, originPortId: e.target.value })}
-                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-medium"
+                  className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-medium ${
+                    isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
+                  }`}
                 >
-                  <option value="singapore">
-                    Port of Singapore ({getVoyageDistance("singapore", inputs.destinationPortId).toLocaleString()} NM to {selectedMajorPort?.name || "Destination"})
-                  </option>
-                  <option value="port_hedland">
-                    Port Hedland, Australia ({getVoyageDistance("port_hedland", inputs.destinationPortId).toLocaleString()} NM)
-                  </option>
-                  <option value="richards_bay">
-                    Richards Bay, South Africa ({getVoyageDistance("richards_bay", inputs.destinationPortId).toLocaleString()} NM)
-                  </option>
-                  <option value="ras_laffan">
-                    Ras Laffan, Qatar ({getVoyageDistance("ras_laffan", inputs.destinationPortId).toLocaleString()} NM)
-                  </option>
+                  <optgroup label="Domestic Indian Ports (Coastal Shipping)">
+                    {INDIAN_MAJOR_PORTS.map((p) => (
+                      <option key={`origin-${p.id}`} value={p.id}>
+                        {p.name} [{p.code}] - Coastal Berth ({p.state})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="International Loading Hubs">
+                    {INTERNATIONAL_LOADING_HUBS.map((hub) => (
+                      <option key={`origin-${hub.id}`} value={hub.id}>
+                        {hub.name} [{hub.code}] - {hub.country}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
               {/* Destination Port */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
-                  <Anchor className="w-3.5 h-3.5 text-coral" />
-                  Destination Port (Indian Gateway)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
+                    <Anchor className="w-3.5 h-3.5 text-coral" />
+                    Destination Port (Indian Gateway)
+                  </label>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest/10 dark:bg-paper-light/10 font-bold border border-forest/15">
+                    MAX DRAFT: {selectedMajorPort.maxBerthDraftM}M
+                  </span>
+                </div>
                 <select
                   value={inputs.destinationPortId}
                   onChange={(e) => setInputs({ ...inputs, destinationPortId: e.target.value })}
-                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold"
+                  className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold ${
+                    isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
+                  }`}
                 >
                   <optgroup label="East Coast (Bay of Bengal)">
                     {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "East Coast").map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={`dest-${p.id}`} value={p.id}>
                         {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
                       </option>
                     ))}
                   </optgroup>
                   <optgroup label="West Coast (Arabian Sea)">
                     {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "West Coast").map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={`dest-${p.id}`} value={p.id}>
                         {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
                       </option>
                     ))}
                   </optgroup>
                 </select>
               </div>
+            </div>
+
+            {/* DYNAMIC VALIDATION RULES */}
+            <div className="space-y-3 pt-2">
+              {/* 1. Same Port Warning Block */}
+              {isSamePort && (
+                <div className="p-3.5 rounded-lg bg-red-500/10 border-2 border-red-500 text-xs flex items-start gap-3 animate-in fade-in duration-200">
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-red-700 dark:text-red-300 flex items-center gap-2">
+                      <span>Origin and Destination cannot be identical</span>
+                      <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-red-600 text-paper-light">ROUTING BLOCKED</span>
+                    </div>
+                    <p className="text-forest/80 dark:text-paper-light/80 text-[11px] leading-relaxed">
+                      Please select distinct loading and discharging ports for domestic coastal transit, or select an international loading hub.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Dynamic Distance & Transit Telemetry Bar */}
+              <div className="p-4 rounded-lg bg-forest/5 dark:bg-paper-light/5 border border-forest/15 dark:border-paper-light/15 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-forest/60 dark:text-paper-light/60 block">
+                    Voyage Classification
+                  </span>
+                  <span className="font-bold text-forest dark:text-paper-light flex items-center gap-1.5 mt-0.5">
+                    {isDomesticVoyage ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span className="truncate">Coastal Cabotage</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                        <span className="truncate">International Import</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-forest/60 dark:text-paper-light/60 block">
+                    Estimated Sea Distance
+                  </span>
+                  <span className="font-mono font-bold text-forest dark:text-paper-light text-sm mt-0.5 block">
+                    {isSamePort ? "0 NM" : `${voyageNM.toLocaleString()} NM`}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-forest/60 dark:text-paper-light/60 block">
+                    Vessel Speed
+                  </span>
+                  <span className="font-mono font-bold text-forest dark:text-paper-light text-sm mt-0.5 block">
+                    {vesselSpeed} Knots
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-forest/60 dark:text-paper-light/60 block">
+                    Voyage Transit Time
+                  </span>
+                  <span className="font-mono font-bold text-coral text-sm mt-0.5 block">
+                    {isSamePort ? "N/A" : `${transitDays} Days (${transitHours}h)`}
+                  </span>
+                </div>
+              </div>
+
+              {/* 3. Operational Draft vs Berth Draft Check */}
+              {isDraftExceeded ? (
+                <div className="p-3.5 rounded-lg bg-amber-500/10 border-2 border-amber-500/60 text-xs flex items-start gap-3">
+                  <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-bold text-[10px] px-2 py-0.5 rounded bg-amber-500 text-paper-light uppercase">
+                        Draft Warning (+{draftDifferenceM}m Over Berth Limit)
+                      </span>
+                      <span className="font-bold text-amber-800 dark:text-amber-300">
+                        Operational Draft ({effectiveDraft}m) exceeds {selectedMajorPort.name} limit ({maxBerthDraft}m)
+                      </span>
+                    </div>
+                    <p className="text-forest/80 dark:text-paper-light/80 text-[11px] leading-relaxed">
+                      Laden vessel draft exceeds standard charted berth depth. Entering fairway requires high-water spring tidal transit or offshore lightering.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-forest/90 dark:text-paper-light/90">
+                      <strong>Draft Check Passed:</strong> Vessel operational draft ({effectiveDraft}m) is within {selectedMajorPort.name}&apos;s max berth limit ({maxBerthDraft}m).
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded bg-emerald-500/15 shrink-0">
+                    Safe Margin: +{draftDifferenceM}m
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Terminal-Cargo Compatibility Validation */}
@@ -547,9 +696,14 @@ export default function VoyagePlannerPage() {
 
             <button
               type="submit"
-              className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-md bg-forest text-paper-light dark:bg-paper-light dark:text-forest text-sm font-bold tracking-wide border border-forest dark:border-paper-light shadow-editorial hover:translate-x-[-1px] hover:translate-y-[-1px] transition-all cursor-pointer"
+              disabled={isSamePort}
+              className={`inline-flex items-center justify-center gap-3 px-8 py-4 rounded-md text-sm font-bold tracking-wide border shadow-editorial transition-all ${
+                isSamePort
+                  ? "bg-forest/40 text-paper-light/50 border-forest/20 cursor-not-allowed opacity-60"
+                  : "bg-forest text-paper-light dark:bg-paper-light dark:text-forest border-forest dark:border-paper-light hover:translate-x-[-1px] hover:translate-y-[-1px] cursor-pointer"
+              }`}
             >
-              <span>Compare Vessels & Run Audit</span>
+              <span>{isSamePort ? "Routing Blocked: Same Port Selected" : "Compare Vessels & Run Audit"}</span>
               <ArrowRight className="w-4 h-4 text-coral" />
             </button>
           </div>

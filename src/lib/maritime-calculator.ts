@@ -14,6 +14,10 @@ import {
   getMajorPort,
   validateTerminalCargoCompatibility,
   normalizeCargoCategory,
+  INTERNATIONAL_LOADING_HUBS,
+  InternationalHub,
+  getInternationalHub,
+  INDIAN_COASTAL_CHAIN_NM,
 } from "@/data/ports";
 
 export {
@@ -21,8 +25,11 @@ export {
   getMajorPort,
   validateTerminalCargoCompatibility,
   normalizeCargoCategory,
+  INTERNATIONAL_LOADING_HUBS,
+  getInternationalHub,
+  INDIAN_COASTAL_CHAIN_NM,
 };
-export type { MajorPort };
+export type { MajorPort, InternationalHub };
 
 // ============================================================================
 // 1. RICH REALISTIC CARGO PROFILES (UN Numbers, IMDG Classes, VGM Certifications)
@@ -930,17 +937,66 @@ export function calculateAcousticNoiseDB(speedKnots: number): number {
 }
 
 export function getVoyageDistance(originId: string, destinationPortId: string): number {
+  if (!originId || !destinationPortId) return 1650;
+  
+  const originMajor = getMajorPort(originId);
+  const destMajor = getMajorPort(destinationPortId);
+
+  // Case 1: Domestic coastal shipping between two Indian Major Ports
+  if (originMajor && destMajor) {
+    if (originMajor.id === destMajor.id) return 0;
+    const originPos = INDIAN_COASTAL_CHAIN_NM[originMajor.id] ?? 200;
+    const destPos = INDIAN_COASTAL_CHAIN_NM[destMajor.id] ?? 200;
+    return Math.max(50, Math.abs(destPos - originPos));
+  }
+
+  // Case 2: International Hub to Indian Major Port
+  if (destMajor) {
+    const cleanOrigin = originId.toLowerCase().trim();
+    if (cleanOrigin.includes("singapore") || cleanOrigin.includes("sgsin")) {
+      return destMajor.distanceFromSingaporeNM;
+    }
+    if (cleanOrigin.includes("hedland") || cleanOrigin.includes("auphe")) {
+      return Math.round(destMajor.distanceFromSingaporeNM + 2030);
+    }
+    if (cleanOrigin.includes("richards") || cleanOrigin.includes("zarcb")) {
+      return destMajor.coast === "West Coast" ? 4350 : 4850;
+    }
+    if (cleanOrigin.includes("laffan") || cleanOrigin.includes("qarlf")) {
+      return destMajor.coast === "West Coast" ? 1240 : 2550;
+    }
+    if (cleanOrigin.includes("rotterdam") || cleanOrigin.includes("nlrtm")) {
+      return destMajor.coast === "West Coast" ? 6300 : 6850;
+    }
+    return destMajor.distanceFromSingaporeNM;
+  }
+
+  // Case 3: Indian Major Port to International Hub (Export / Backhaul)
+  if (originMajor) {
+    const cleanDest = destinationPortId.toLowerCase().trim();
+    if (cleanDest.includes("singapore") || cleanDest.includes("sgsin")) {
+      return originMajor.distanceFromSingaporeNM;
+    }
+    if (cleanDest.includes("hedland") || cleanDest.includes("auphe")) {
+      return Math.round(originMajor.distanceFromSingaporeNM + 2030);
+    }
+    if (cleanDest.includes("richards") || cleanDest.includes("zarcb")) {
+      return originMajor.coast === "West Coast" ? 4350 : 4850;
+    }
+    if (cleanDest.includes("laffan") || cleanDest.includes("qarlf")) {
+      return originMajor.coast === "West Coast" ? 1240 : 2550;
+    }
+    if (cleanDest.includes("rotterdam") || cleanDest.includes("nlrtm")) {
+      return originMajor.coast === "West Coast" ? 6300 : 6850;
+    }
+    return originMajor.distanceFromSingaporeNM;
+  }
+
+  // Fallback to static distance matrix
   if (VOYAGE_DISTANCES_NM[originId]?.[destinationPortId]) {
     return VOYAGE_DISTANCES_NM[originId][destinationPortId];
   }
-  const major = getMajorPort(destinationPortId);
-  if (major) {
-    if (originId === "singapore") return major.distanceFromSingaporeNM;
-    if (originId === "port_hedland") return Math.round(major.distanceFromSingaporeNM + 2030);
-    if (originId === "richards_bay") return major.coast === "West Coast" ? 4350 : 4850;
-    if (originId === "ras_laffan") return major.coast === "West Coast" ? 1350 : 2550;
-    return major.distanceFromSingaporeNM;
-  }
+
   return 1650;
 }
 
