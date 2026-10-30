@@ -10,6 +10,8 @@
     "test:security": "node scripts/verify-security.js"
   },
   "dependencies": {
+    "@google/genai": "^2.32.0",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.45.4",
     "clsx": "^2.1.1",
     "jspdf": "^2.5.2",
