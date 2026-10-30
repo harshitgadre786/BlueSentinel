@@ -1,6 +1,7 @@
+"use client";
+
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-"use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import {

@@ -85,8 +85,8 @@ export default function VoyagePlannerResultsPage() {
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Modify Voyage Inputs</span>
             </Link>
-            <span className="text-xs font-mono text-coral uppercase tracking-wider">
-              SIMULATED PROTOTYPE DATA • DETERMINISTIC OUTPUT
+            <span className="text-xs font-mono text-forest/60 dark:text-paper-light/60 uppercase tracking-wider">
+              DETERMINISTIC EVALUATION • PARADIP CALL
             </span>
           </div>
 

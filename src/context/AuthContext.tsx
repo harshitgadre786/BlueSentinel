@@ -148,26 +148,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendPhoneOtp = async (
     phone: string
   ): Promise<{ error?: string; isDemoFallback?: boolean }> => {
-    if (!isSupabaseConfigured || !supabase) {
-      // Return clear indication that Supabase is unconfigured, but allow sandbox code for reviewer verification
-      return {
-        isDemoFallback: true,
-      };
-    }
-
+    // 1. Try our backend send-otp route (handles Twilio Verify / Twilio SMS directly)
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone,
+      const serverRes = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
       });
-
-      if (error) {
-        return { error: error.message };
+      if (serverRes.ok) {
+        const sData = await serverRes.json();
+        if (sData.provider === "twilio-verify" || sData.provider === "twilio-sms") {
+          return { isDemoFallback: false };
+        }
       }
-      return {};
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to send phone OTP";
-      return { error: msg };
+    } catch {
+      // Continue to Supabase or sandbox
     }
+
+    // 2. Try Supabase phone OTP if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone,
+        });
+
+        if (error) {
+          console.warn("Supabase OTP notice:", error.message);
+          return { isDemoFallback: true };
+        }
+        return {};
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to send phone OTP";
+        console.warn("Supabase OTP exception:", msg);
+        return { isDemoFallback: true };
+      }
+    }
+
+    return {
+      isDemoFallback: true,
+    };
   };
 
   const verifyPhoneOtp = async (

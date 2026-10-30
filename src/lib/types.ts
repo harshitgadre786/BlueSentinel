@@ -123,7 +123,7 @@ export interface RAGDocument {
   id: string;
   title: string;
   filename: string;
-  category: "VESSEL_SPEC" | "PORT_NOTICE" | "REGULATORY";
+  category: "VESSEL_SPEC" | "PORT_NOTICE" | "REGULATORY" | "CHARTERPARTY";
   uploadDate: string;
   sizeBytes: number;
   chunks: DocumentChunk[];

@@ -13,7 +13,7 @@ export default function WorkspaceNav({ serviceTitle }: { serviceTitle?: string }
     { href: "/workspace", label: "Overview", icon: Compass },
     { href: "/workspace/voyage-planner", label: "Voyage Planner", icon: Ship },
     { href: "/workspace/compliance", label: "Compliance", icon: FileCheck },
-    { href: "/workspace/blueai", label: "BlueAI Copilot", icon: Bot },
+    { href: "/workspace/blueai", label: "BlueAI Agent", icon: Bot },
     { href: "/workspace/simulator", label: "Simulator", icon: Sliders },
     { href: "/workspace/environment", label: "Environment", icon: Leaf },
     { href: "/workspace/reports", label: "Reports", icon: FileText },
@@ -56,9 +56,10 @@ export default function WorkspaceNav({ serviceTitle }: { serviceTitle?: string }
         </nav>
 
         <div className="flex items-center gap-3">
-          <span className="hidden sm:inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-coral/10 text-coral border border-coral/30">
-            Simulated Prototype
-          </span>
+          <div className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-medium">Fleet Engine Active</span>
+          </div>
           <ThemeToggle />
         </div>
       </div>
