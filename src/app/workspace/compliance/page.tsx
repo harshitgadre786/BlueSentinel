@@ -20,7 +20,7 @@ import {
 
 export default function PortCompliancePage() {
   const [selectedPortId, setSelectedPortId] = useState<string>("paradip");
-  const [selectedVesselId, setSelectedVesselId] = useState<"vesselA" | "vesselB" | "vesselC">("vesselA");
+  const [selectedVesselId, setSelectedVesselId] = useState<string>("vesselA");
   const [selectedTideState, setSelectedTideState] = useState<"NEAP" | "NORMAL" | "SPRING">("NORMAL");
   const [checkedDocs, setCheckedDocs] = useState<Record<string, boolean>>({
     DOC_LLD: true,
@@ -28,7 +28,7 @@ export default function PortCompliancePage() {
   });
 
   const port = DETAILED_INDIAN_PORTS[selectedPortId] || DETAILED_INDIAN_PORTS.paradip;
-  const vessel = DEMO_VESSELS[selectedVesselId];
+  const vessel = DEMO_VESSELS[selectedVesselId] || DEMO_VESSELS.vesselA;
 
   // Dynamic calculations
   let tideHeightM = port.tidalAllowance;
@@ -66,7 +66,7 @@ export default function PortCompliancePage() {
         {/* Header */}
         <div className="space-y-3">
           <span className="text-xs font-mono uppercase tracking-widest text-coral">
-            PHASE 4 • HARBOUR CLEARANCE AUDIT
+            CARGO MANIFEST & COMPLIANCE • HARBOUR CLEARANCE AUDIT
           </span>
           <h1 className="font-serif text-3xl sm:text-5xl font-black text-forest dark:text-paper-light tracking-tight">
             Indian Port Rules & Draft Verification
@@ -105,7 +105,7 @@ export default function PortCompliancePage() {
             </label>
             <select
               value={selectedVesselId}
-              onChange={(e) => setSelectedVesselId(e.target.value as "vesselA" | "vesselB" | "vesselC")}
+              onChange={(e) => setSelectedVesselId(e.target.value)}
               className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none cursor-pointer font-semibold"
             >
               {Object.values(DEMO_VESSELS).map((v) => (

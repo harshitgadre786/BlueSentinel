@@ -1,7 +1,31 @@
 import { PortData } from "./types";
 
+export type CargoCategory =
+  | "DRY_BULK"
+  | "CONTAINER"
+  | "LIQUID_BULK"
+  | "LNG_CRYOGENIC"
+  | "BREAKBULK"
+  | "RO_RO"
+  | "HAZARDOUS";
+
+export interface CargoProfile {
+  id: string;
+  name: string;
+  category: CargoCategory;
+  defaultTonnageMT: number;
+  densityT_M3: number;
+  unNumber: string; // e.g. "UN 3480" or "UN 1267" or "N/A"
+  imdgClass: string; // e.g. "Class 9", "Class 3", "N/A"
+  packingGroup?: string; // e.g. "PG II", "PG I", "N/A"
+  vgmMethod: string; // e.g. "SOLAS Method 1 (Weighbridge Scale Ticket)"
+  hazardous: boolean;
+  stowageFactorM3_T: number;
+  specialHandlingNotes: string;
+}
+
 export interface DemoVessel {
-  id: "vesselA" | "vesselB" | "vesselC";
+  id: "vesselA" | "vesselB" | "vesselC" | string;
   name: string;
   type: string;
   dwt: number; // Cargo capacity DWT
@@ -14,6 +38,18 @@ export interface DemoVessel {
   demurrageDailyRate: number; // Charterparty demurrage USD/day
   description: string;
   archetype: "DRAFT_RISK" | "RECOMMENDED" | "DELAY_RISK";
+  // Accurate IMO Specifications
+  imoNumber: string;
+  mmsi: string;
+  flag: string;
+  beam: number; // meters
+  loa: number; // length overall in meters
+  cargoCapabilities: CargoCategory[];
+  currentPort: string;
+  coordinates: { lat: number; lng: number };
+  capacityDetail?: string; // e.g. "5,400 TEU", "174,000 m³", "6,500 CEU"
+  hazardCertifications?: string[];
+  permissiblePayloadMT?: number;
 }
 
 export interface DetailedPortRule extends PortData {
@@ -35,6 +71,7 @@ export interface DetailedPortRule extends PortData {
 
 export interface VoyagePlannerInputs {
   cargoType: string;
+  cargoCategory?: CargoCategory;
   cargoQuantityMT: number;
   originPortId: string;
   destinationPortId: string;
@@ -43,6 +80,15 @@ export interface VoyagePlannerInputs {
   usdToInrRate: number;
   portWaitingDays: number;
   selectedTideState?: "NEAP" | "NORMAL" | "SPRING";
+  // Dynamic Vessel & Cargo Reactivity parameters
+  selectedVesselId?: string;
+  unNumber?: string;
+  imdgClass?: string;
+  vgmMethod?: string;
+  targetDraftM?: number;
+  vesselBeamM?: number;
+  vesselDwtMT?: number;
+  permissiblePayloadMT?: number;
 }
 
 export interface LandedCostBreakdown {
@@ -89,7 +135,7 @@ export interface VesselEvaluationResult {
 export interface MultiVesselComparison {
   inputs: VoyagePlannerInputs;
   port: DetailedPortRule;
-  results: Record<"vesselA" | "vesselB" | "vesselC", VesselEvaluationResult>;
-  recommendedVesselId: "vesselA" | "vesselB" | "vesselC";
+  results: Record<string, VesselEvaluationResult>;
+  recommendedVesselId: string;
   executiveRationale: string;
 }

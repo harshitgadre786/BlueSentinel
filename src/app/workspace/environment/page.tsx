@@ -19,11 +19,11 @@ import {
 
 export default function EnvironmentalImpactPage() {
   const [speedKnots, setSpeedKnots] = useState<number>(12.8);
-  const [selectedVesselId, setSelectedVesselId] = useState<"vesselA" | "vesselB" | "vesselC">("vesselB");
+  const [selectedVesselId, setSelectedVesselId] = useState<string>("vesselB");
 
   const port = DETAILED_INDIAN_PORTS.paradip;
   const origin = ORIGIN_PORTS.singapore;
-  const vessel = DEMO_VESSELS[selectedVesselId];
+  const vessel = DEMO_VESSELS[selectedVesselId] || DEMO_VESSELS.vesselB;
 
   // Acoustic & emissions model (Prototype scenario data)
   const noiseDB = calculateAcousticNoiseDB(speedKnots);
@@ -106,7 +106,7 @@ export default function EnvironmentalImpactPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono uppercase tracking-widest text-coral">
-              PHASE 7 • MARITIME DECARBONIZATION & URN AUDIT
+              ENVIRONMENTAL IMPACT • DECARBONIZATION & URN AUDIT
             </span>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-mustard/20 text-mustard border border-mustard/30 uppercase">
               Prototype scenario data

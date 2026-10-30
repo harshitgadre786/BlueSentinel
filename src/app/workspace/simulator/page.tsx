@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import WorkspaceNav from "@/components/WorkspaceNav";
 import { DEMO_VESSELS, DETAILED_INDIAN_PORTS, calculateDynamicSquat } from "@/lib/maritime-calculator";
+import { DemoVessel } from "@/lib/maritime-models";
 import {
   ResponsiveContainer,
   BarChart,
@@ -44,7 +45,7 @@ export default function WhatIfSimulatorPage() {
   const distanceNM = 1650; // Singapore to Paradip
 
   // Compute live metrics for all 3 vessels
-  const computeVesselSimulation = (vessel: typeof DEMO_VESSELS.vesselA) => {
+  const computeVesselSimulation = (vessel: DemoVessel) => {
     const seaDays = Number((distanceNM / (speedKnots * 24)).toFixed(2));
     const totalDays = Number((seaDays + portWaitDays).toFixed(2));
 
@@ -184,7 +185,7 @@ export default function WhatIfSimulatorPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">
             <span className="text-xs font-mono uppercase tracking-widest text-coral">
-              PHASE 6 • INTERACTIVE SENSITIVITY MODEL
+              SENSITIVITY ANALYSIS • WHAT-IF SIMULATION
             </span>
             <h1 className="font-serif text-3xl sm:text-4xl font-black tracking-tight">
               What-If Scenario Simulator

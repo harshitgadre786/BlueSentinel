@@ -1,10 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import WorkspaceNav from "@/components/WorkspaceNav";
-import { VoyagePlannerInputs } from "@/lib/maritime-models";
-import { DETAILED_INDIAN_PORTS, DEMO_VESSELS } from "@/lib/maritime-calculator";
+import { VoyagePlannerInputs, DemoVessel, CargoProfile } from "@/lib/maritime-models";
+import {
+  DETAILED_INDIAN_PORTS,
+  CARGO_PROFILES,
+  CHARTERED_FLEET,
+  getVesselsForCargo,
+} from "@/lib/maritime-calculator";
 import {
   Ship,
   Anchor,
@@ -18,13 +23,20 @@ import {
   Info,
   ShieldCheck,
   RotateCcw,
+  CheckCircle2,
+  AlertTriangle,
+  Radio,
+  FileCheck2,
+  Gauge,
+  Sliders,
 } from "lucide-react";
 
 export default function VoyagePlannerPage() {
   const router = useRouter();
 
   const defaultInputs: VoyagePlannerInputs = {
-    cargoType: "Thermal Coal",
+    cargoType: "Dry Bulk (Coal, Ore, Grain)",
+    cargoCategory: "DRY_BULK",
     cargoQuantityMT: 75000,
     originPortId: "singapore",
     destinationPortId: "paradip",
@@ -33,15 +45,86 @@ export default function VoyagePlannerPage() {
     usdToInrRate: 83.50,
     portWaitingDays: 3.5,
     selectedTideState: "NORMAL",
+    selectedVesselId: "vesselB",
+    unNumber: "N/A (IMSBC Group B - MHB)",
+    imdgClass: "Non-IMDG (Solid Bulk Cargo)",
+    vgmMethod: "Certified Belt Conveyor Scale Ticket + Draft Survey",
+    targetDraftM: 13.30,
+    vesselBeamM: 32.26,
+    vesselDwtMT: 64500,
+    permissiblePayloadMT: 61275,
   };
 
   const [inputs, setInputs] = useState<VoyagePlannerInputs>(defaultInputs);
-  const [activeStep, setActiveStep] = useState<1 | 2>(1);
+  const [availableVessels, setAvailableVessels] = useState<DemoVessel[]>([]);
+  const [selectedVessel, setSelectedVessel] = useState<DemoVessel>(CHARTERED_FLEET.vesselB);
+
+  // Initialize and react to cargo type changes
+  useEffect(() => {
+    const vessels = getVesselsForCargo(inputs.cargoType);
+    setAvailableVessels(vessels);
+
+    // Pick first matching vessel or keep current if still valid
+    const currentStillValid = vessels.find((v) => v.id === inputs.selectedVesselId);
+    const primary = currentStillValid || vessels[0];
+
+    if (primary) {
+      setSelectedVessel(primary);
+      setInputs((prev) => ({
+        ...prev,
+        selectedVesselId: primary.id,
+        targetDraftM: primary.loadedDraft,
+        vesselBeamM: primary.beam,
+        vesselDwtMT: primary.dwt,
+        permissiblePayloadMT: primary.permissiblePayloadMT || Math.round(primary.dwt * 0.95),
+      }));
+    }
+  }, [inputs.cargoType]);
 
   const selectedPort = DETAILED_INDIAN_PORTS[inputs.destinationPortId] || DETAILED_INDIAN_PORTS.paradip;
 
+  // Handle Cargo Selection change with auto-parameters
+  const handleCargoTypeChange = (selectedName: string) => {
+    const matchedProfile = Object.values(CARGO_PROFILES).find(
+      (p) => p.name === selectedName
+    ) || CARGO_PROFILES.dry_bulk_coal;
+
+    const filteredVessels = getVesselsForCargo(selectedName);
+    const candidate = filteredVessels[0] || CHARTERED_FLEET.vesselB;
+
+    setSelectedVessel(candidate);
+    setInputs((prev) => ({
+      ...prev,
+      cargoType: matchedProfile.name,
+      cargoCategory: matchedProfile.category,
+      cargoQuantityMT: matchedProfile.defaultTonnageMT,
+      unNumber: matchedProfile.unNumber,
+      imdgClass: matchedProfile.imdgClass,
+      vgmMethod: matchedProfile.vgmMethod,
+      selectedVesselId: candidate.id,
+      targetDraftM: candidate.loadedDraft,
+      vesselBeamM: candidate.beam,
+      vesselDwtMT: candidate.dwt,
+      permissiblePayloadMT: candidate.permissiblePayloadMT || Math.round(candidate.dwt * 0.95),
+    }));
+  };
+
+  // Handle Vessel Selection card click
+  const handleSelectVessel = (v: DemoVessel) => {
+    setSelectedVessel(v);
+    setInputs((prev) => ({
+      ...prev,
+      selectedVesselId: v.id,
+      targetDraftM: v.loadedDraft,
+      vesselBeamM: v.beam,
+      vesselDwtMT: v.dwt,
+      permissiblePayloadMT: v.permissiblePayloadMT || Math.round(v.dwt * 0.95),
+    }));
+  };
+
   const handleResetDefaults = () => {
     setInputs(defaultInputs);
+    setSelectedVessel(CHARTERED_FLEET.vesselB);
   };
 
   const handleProceedToComparison = (e: React.FormEvent) => {
@@ -61,11 +144,11 @@ export default function VoyagePlannerPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-coral">
-              PHASE 2 • VOYAGE SPECIFICATION
+              VOYAGE & VESSEL SELECTION • VOYAGE SPECIFICATION
             </span>
             <button
               onClick={handleResetDefaults}
-              className="text-xs font-semibold text-forest/60 dark:text-paper-light/60 hover:text-coral flex items-center gap-1 transition-colors"
+              className="text-xs font-semibold text-forest/60 dark:text-paper-light/60 hover:text-coral flex items-center gap-1 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 text-mustard" />
               <span>Reset to Paradip Benchmark</span>
@@ -73,23 +156,23 @@ export default function VoyagePlannerPage() {
           </div>
 
           <h1 className="font-serif text-3xl sm:text-5xl font-black text-forest dark:text-paper-light tracking-tight">
-            Configure Voyage Parameters
+            Configure Voyage & Fleet Parameters
           </h1>
           <p className="text-sm sm:text-base text-forest/75 dark:text-paper-light/75 max-w-2xl font-normal leading-relaxed">
-            Enter cargo tonnage, ports, and laycan details. BlueSentinel will deterministically calculate landed costs, Under Keel Clearance, and evaluate three chartered vessels.
+            Select cargo classification and voyage laycan. BlueSentinel dynamically filters chartered fleet options, verifies IMO statutory compliance, and calculates landed costs.
           </p>
 
-          <div className="p-3 rounded bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-lg bg-forest/5 dark:bg-paper-light/5 border border-forest/15 dark:border-paper-light/15 text-xs flex items-center gap-2.5">
             <Info className="w-4 h-4 text-mustard shrink-0" />
-            <span>
-              <strong>Simulated prototype data:</strong> All hydrodynamic squat formulas, draft parameters, and port charges are calibrated for decision-support testing.
+            <span className="text-forest/80 dark:text-paper-light/80">
+              <strong>Dynamic Fleet Reactivity Active:</strong> Changing Cargo Type automatically filters available chartered vessels and auto-updates arrival draft, beam, and payload limits.
             </span>
           </div>
         </div>
 
         {/* Form Container */}
         <form onSubmit={handleProceedToComparison} className="space-y-10">
-          {/* Step 1: Cargo & Routing */}
+          {/* Step 1: Cargo Profile & Routing */}
           <div className="p-8 rounded-xl bg-paper-surface/50 dark:bg-paper-dark-surface/40 border border-forest/15 dark:border-paper-light/15 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-forest/15 dark:border-paper-light/15">
               <div className="flex items-center gap-2">
@@ -97,31 +180,33 @@ export default function VoyagePlannerPage() {
                   1
                 </span>
                 <h2 className="font-serif text-xl font-bold text-forest dark:text-paper-light">
-                  Cargo Profile & Routing
+                  Cargo Specification & Regulatory Class
                 </h2>
               </div>
               <span className="text-xs font-mono text-forest/50 dark:text-paper-light/50">
-                ORIGIN ➔ INDIAN PORT
+                DYNAMIC FILTERING ACTIVE
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Cargo Type */}
+              {/* Cargo Type Select */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-coral" />
-                  Cargo Type
+                  Cargo Type / Classification
                 </label>
                 <select
                   value={inputs.cargoType}
-                  onChange={(e) => setInputs({ ...inputs, cargoType: e.target.value })}
-                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-medium"
+                  onChange={(e) => handleCargoTypeChange(e.target.value)}
+                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold"
                 >
-                  <option value="Thermal Coal">Thermal Coal (Bulk)</option>
-                  <option value="Iron Ore Fines">Iron Ore Fines</option>
-                  <option value="Coking Coal">Coking Coal</option>
-                  <option value="Bauxite / Mineral Agri">Bauxite / Agri Bulk</option>
-                  <option value="Clean Petroleum Products">Clean Petroleum (CPP)</option>
+                  <option value="Dry Bulk (Coal, Ore, Grain)">Dry Bulk (Coal, Ore, Grain)</option>
+                  <option value="Container / Intermodal">Container / Intermodal (TEU)</option>
+                  <option value="Liquid Bulk / Crude / Chemicals">Liquid Bulk / Crude / Chemicals</option>
+                  <option value="Hazardous / IMDG Special">Hazardous / IMDG Special</option>
+                  <option value="LNG / Cryogenic Liquefied Gas">LNG / Cryogenic Liquefied Gas</option>
+                  <option value="Breakbulk / Heavy Machinery">Breakbulk / Heavy Machinery</option>
+                  <option value="Ro-Ro / Wheeled Rolling Stock">Ro-Ro / Wheeled Rolling Stock</option>
                 </select>
               </div>
 
@@ -133,12 +218,14 @@ export default function VoyagePlannerPage() {
                 </label>
                 <input
                   type="number"
-                  min={20000}
-                  max={150000}
-                  step={5000}
+                  min={5000}
+                  max={160000}
+                  step={1000}
                   value={inputs.cargoQuantityMT}
-                  onChange={(e) => setInputs({ ...inputs, cargoQuantityMT: Number(e.target.value) || 75000 })}
-                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light font-mono font-semibold"
+                  onChange={(e) =>
+                    setInputs({ ...inputs, cargoQuantityMT: Number(e.target.value) || 75000 })
+                  }
+                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest font-mono font-bold"
                   required
                 />
               </div>
@@ -165,12 +252,12 @@ export default function VoyagePlannerPage() {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                   <Anchor className="w-3.5 h-3.5 text-coral" />
-                  Destination Indian Port
+                  Destination Port (Indian Gateway)
                 </label>
                 <select
                   value={inputs.destinationPortId}
                   onChange={(e) => setInputs({ ...inputs, destinationPortId: e.target.value })}
-                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold text-coral"
+                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold"
                 >
                   {Object.values(DETAILED_INDIAN_PORTS).map((p) => (
                     <option key={p.id} value={p.id}>
@@ -181,23 +268,45 @@ export default function VoyagePlannerPage() {
               </div>
             </div>
 
-            {/* Selected Port Alert Card */}
-            <div className="p-4 rounded-md bg-paper-light dark:bg-paper-dark border border-forest/10 dark:border-paper-light/10 text-xs space-y-1">
-              <div className="flex items-center justify-between font-semibold">
-                <span className="text-forest dark:text-paper-light">
-                  {selectedPort.name} Berth Channel Limits:
+            {/* Realistic Cargo Regulatory Details Bar */}
+            <div className="pt-4 border-t border-forest/10 dark:border-paper-light/10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+              <div className="p-3 rounded bg-forest/5 dark:bg-paper-light/5 border border-forest/10 dark:border-paper-light/10">
+                <span className="text-forest/50 dark:text-paper-light/50 block text-[10px] uppercase font-sans font-bold">
+                  UN & Hazardous Class
                 </span>
-                <span className="font-mono text-coral font-bold">
-                  Max Draft: {selectedPort.maxPermissibleDraft}m CD
-                </span>
+                <span className="font-bold text-coral">{inputs.unNumber || "N/A"}</span>
+                <div className="text-[11px] text-forest/70 dark:text-paper-light/70 mt-0.5">
+                  {inputs.imdgClass || "Non-IMDG"}
+                </div>
               </div>
-              <p className="text-forest/70 dark:text-paper-light/70 text-[11px] leading-relaxed">
-                {selectedPort.description} Mandatory UKC: {selectedPort.requiredUKC}m.
-              </p>
+
+              <div className="p-3 rounded bg-forest/5 dark:bg-paper-light/5 border border-forest/10 dark:border-paper-light/10">
+                <span className="text-forest/50 dark:text-paper-light/50 block text-[10px] uppercase font-sans font-bold">
+                  SOLAS Verified Gross Mass (VGM)
+                </span>
+                <span className="font-bold text-forest dark:text-paper-light">
+                  {inputs.vgmMethod?.split("(")[0] || "Certified Scale"}
+                </span>
+                <div className="text-[10px] text-forest/60 dark:text-paper-light/60 mt-0.5 truncate">
+                  {inputs.vgmMethod}
+                </div>
+              </div>
+
+              <div className="p-3 rounded bg-forest/5 dark:bg-paper-light/5 border border-forest/10 dark:border-paper-light/10">
+                <span className="text-forest/50 dark:text-paper-light/50 block text-[10px] uppercase font-sans font-bold">
+                  Selected Vessel Permissible Payload
+                </span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {inputs.permissiblePayloadMT?.toLocaleString() || "61,275"} MT
+                </span>
+                <div className="text-[10px] text-forest/60 dark:text-paper-light/60 mt-0.5">
+                  {selectedVessel?.name} (DWT: {inputs.vesselDwtMT?.toLocaleString()} MT)
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Step 2: Laycan, Market Rates & Port Delays */}
+          {/* Step 2: Commercial & Operational Inputs */}
           <div className="p-8 rounded-xl bg-paper-surface/50 dark:bg-paper-dark-surface/40 border border-forest/15 dark:border-paper-light/15 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-forest/15 dark:border-paper-light/15">
               <div className="flex items-center gap-2">
@@ -205,35 +314,35 @@ export default function VoyagePlannerPage() {
                   2
                 </span>
                 <h2 className="font-serif text-xl font-bold text-forest dark:text-paper-light">
-                  Laycan Timing & Cost Parameters
+                  Commercial Laycan & Port Parameters
                 </h2>
               </div>
               <span className="text-xs font-mono text-forest/50 dark:text-paper-light/50">
-                MARKET RATES & DELAY ASSUMPTIONS
+                FINANCIAL DISPATCH FACTORS
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               {/* Laycan Date */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-mustard" />
-                  Expected Departure
+                  Laycan Date
                 </label>
                 <input
                   type="date"
                   value={inputs.laycanDate}
                   onChange={(e) => setInputs({ ...inputs, laycanDate: e.target.value })}
-                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-xs text-forest dark:text-paper-light focus:outline-none focus:border-forest font-mono"
+                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-xs text-forest dark:text-paper-light focus:outline-none focus:border-forest font-mono cursor-pointer"
                   required
                 />
               </div>
 
-              {/* Fuel Price (VLSFO) */}
+              {/* Fuel Price */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                   <Fuel className="w-3.5 h-3.5 text-coral" />
-                  Fuel Price (USD / MT)
+                  VLSFO Bunker ($/MT)
                 </label>
                 <input
                   type="number"
@@ -242,21 +351,21 @@ export default function VoyagePlannerPage() {
                   step={10}
                   value={inputs.fuelPriceUSD}
                   onChange={(e) => setInputs({ ...inputs, fuelPriceUSD: Number(e.target.value) || 640 })}
-                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-xs text-forest dark:text-paper-light focus:outline-none focus:border-forest font-mono font-bold"
+                  className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-xs text-forest dark:text-paper-light focus:outline-none focus:border-forest font-mono"
                   required
                 />
               </div>
 
-              {/* USD to INR Exchange Rate */}
+              {/* USD to INR */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                   <DollarSign className="w-3.5 h-3.5 text-mustard" />
-                  USD to INR Rate
+                  USD/INR Rate
                 </label>
                 <input
                   type="number"
-                  min={75}
-                  max={95}
+                  min={70}
+                  max={100}
                   step={0.1}
                   value={inputs.usdToInrRate}
                   onChange={(e) => setInputs({ ...inputs, usdToInrRate: Number(e.target.value) || 83.5 })}
@@ -285,63 +394,99 @@ export default function VoyagePlannerPage() {
             </div>
           </div>
 
-          {/* Three Available Candidate Vessels Preview */}
+          {/* DYNAMIC VESSEL FILTERING BY CARGO TYPE */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif text-xl font-bold text-forest dark:text-paper-light">
-                Available Chartered Vessels (3 Candidate Options)
-              </h2>
-              <span className="text-xs font-mono text-forest/60 dark:text-paper-light/60">
-                EVALUATED AT NEXT STEP
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="font-serif text-xl font-bold text-forest dark:text-paper-light flex items-center gap-2">
+                  <Ship className="w-5 h-5 text-coral" />
+                  <span>Available Chartered Vessels for {inputs.cargoType}</span>
+                </h2>
+                <p className="text-xs text-forest/60 dark:text-paper-light/60">
+                  Click a vessel to bind its hydrodynamic parameters (draft, beam, DWT) to this voyage calculation.
+                </p>
+              </div>
+              <span className="text-xs font-mono px-2.5 py-1 rounded bg-forest/10 dark:bg-paper-light/10 text-forest dark:text-paper-light font-bold">
+                {availableVessels.length} VESSELS IN RANGE
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.values(DEMO_VESSELS).map((v) => (
-                <div
-                  key={v.id}
-                  className="p-6 rounded-lg bg-paper-surface/40 dark:bg-paper-dark-surface/30 border border-forest/15 dark:border-paper-light/15 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-serif font-bold text-lg text-forest dark:text-paper-light">
-                      {v.name}
-                    </span>
-                    {v.id === "vesselA" && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-coral/10 text-coral border border-coral/30 font-bold">
-                        DRAFT BREACH
-                      </span>
-                    )}
-                    {v.id === "vesselB" && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest text-paper-light dark:bg-paper-light dark:text-forest font-bold">
-                        RECOMMENDED
-                      </span>
-                    )}
-                    {v.id === "vesselC" && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-mustard/20 text-mustard-hover dark:text-mustard font-bold">
-                        DELAY SENSITIVE
-                      </span>
-                    )}
-                  </div>
+            {availableVessels.length === 0 ? (
+              <div className="p-8 rounded-lg bg-coral/10 border border-coral text-coral text-sm text-center font-medium">
+                No compliant chartered vessels in range for this cargo class. Adjust filters or port radius.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {availableVessels.map((v) => {
+                  const isSelected = selectedVessel?.id === v.id;
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => handleSelectVessel(v)}
+                      className={`p-6 rounded-lg border transition-all cursor-pointer space-y-3 relative ${
+                        isSelected
+                          ? "bg-forest/10 dark:bg-paper-light/10 border-forest dark:border-paper-light ring-2 ring-coral"
+                          : "bg-paper-surface/40 dark:bg-paper-dark-surface/30 border-forest/15 dark:border-paper-light/15 hover:border-forest/40"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-serif font-bold text-lg text-forest dark:text-paper-light flex items-center gap-1.5">
+                            <span>{v.name}</span>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            )}
+                          </div>
+                          <div className="text-[10px] font-mono text-forest/60 dark:text-paper-light/60 mt-0.5">
+                            IMO: {v.imoNumber} &bull; Flag: {v.flag}
+                          </div>
+                        </div>
 
-                  <p className="text-xs text-forest/65 dark:text-paper-light/65 leading-relaxed">
-                    {v.description}
-                  </p>
+                        {v.archetype === "DRAFT_RISK" && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-coral/10 text-coral border border-coral/30 font-bold uppercase shrink-0">
+                            Draft Breach
+                          </span>
+                        )}
+                        {v.archetype === "RECOMMENDED" && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest text-paper-light dark:bg-paper-light dark:text-forest font-bold uppercase shrink-0">
+                            Recommended
+                          </span>
+                        )}
+                        {v.archetype === "DELAY_RISK" && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-mustard/20 text-mustard-hover dark:text-mustard font-bold uppercase shrink-0">
+                            Delay Sensitive
+                          </span>
+                        )}
+                      </div>
 
-                  <div className="pt-3 border-t border-forest/10 dark:border-paper-light/10 grid grid-cols-2 gap-2 text-xs font-mono text-forest/80 dark:text-paper-light/80">
-                    <div>Draft: <strong>{v.loadedDraft}m</strong></div>
-                    <div>Speed: <strong>{v.averageSpeed} kts</strong></div>
-                    <div>Fuel: <strong>{v.dailyFuelBurn} MT/d</strong></div>
-                    <div>Rate: <strong>${v.freightDailyRate.toLocaleString()}/d</strong></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <p className="text-xs text-forest/70 dark:text-paper-light/70 leading-relaxed font-sans line-clamp-2">
+                        {v.description}
+                      </p>
+
+                      <div className="pt-3 border-t border-forest/10 dark:border-paper-light/10 grid grid-cols-2 gap-2 text-xs font-mono text-forest/80 dark:text-paper-light/80">
+                        <div>Draft: <strong className={v.loadedDraft > selectedPort.maxPermissibleDraft ? "text-coral" : ""}>{v.loadedDraft}m</strong></div>
+                        <div>Beam: <strong>{v.beam}m</strong></div>
+                        <div>DWT: <strong>{v.dwt.toLocaleString()} MT</strong></div>
+                        <div>Rate: <strong>${v.freightDailyRate.toLocaleString()}/d</strong></div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-forest/60 dark:text-paper-light/60">
+                        <span className="truncate">Port: {v.currentPort}</span>
+                        <span className="font-bold text-coral">
+                          {isSelected ? "ACTIVE SELECTION" : "CLICK TO BIND"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Submit Action Button */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-forest/15 dark:border-paper-light/15">
             <div className="text-xs text-forest/60 dark:text-paper-light/60">
-              Deterministic calculations executed across all 3 vessels instantly.
+              Deterministic calculations executed across chartered candidates with full draft compliance check.
             </div>
 
             <button

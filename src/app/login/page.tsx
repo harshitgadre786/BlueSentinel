@@ -165,13 +165,13 @@ export default function LoginPage() {
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (!pasted) return;
 
-    const newDigits = [...otpDigits];
+    const newDigits = ["", "", "", "", "", ""];
     for (let i = 0; i < pasted.length; i++) {
       newDigits[i] = pasted[i];
     }
     setOtpDigits(newDigits);
 
-    if (pasted.length === 6) {
+    if (pasted.length === 6 || pasted.length === 4) {
       triggerVerifyOtp(pasted);
     } else {
       const nextIdx = Math.min(5, pasted.length);
@@ -180,13 +180,21 @@ export default function LoginPage() {
     }
   };
 
-  // Trigger verification
+  const handleQuickFillDemoOtp = () => {
+    const demoDigits = ["1", "2", "3", "4", "5", "6"];
+    setOtpDigits(demoDigits);
+    setErrorMsg(null);
+    triggerVerifyOtp("123456");
+  };
+
+  // Trigger verification (supports 4 or 6 digits)
   const triggerVerifyOtp = async (codeToVerify?: string) => {
-    const code = codeToVerify || otpDigits.join("");
-    if (code.length < 6) {
-      setErrorMsg("Please enter all 6 digits of your verification code.");
+    const rawCode = (codeToVerify || otpDigits.join("")).replace(/\D/g, "");
+    if (rawCode.length !== 4 && rawCode.length !== 6) {
+      setErrorMsg("Please enter a valid 4 or 6 digit verification code (Demo OTP: 123456).");
       return;
     }
+    const code = rawCode;
 
     const cleanNumber = phoneNumber.replace(/[^0-9]/g, "");
     const fullPhone = `${selectedCountryCode}${cleanNumber}`;
@@ -435,7 +443,7 @@ export default function LoginPage() {
 
                 <div className="space-y-3">
                   <label className="block text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80">
-                    Enter 6-Digit Code
+                    Enter 4 or 6-Digit Verification Code
                   </label>
 
                   <div className="grid grid-cols-6 gap-2 sm:gap-3" onPaste={handleOtpPaste}>
@@ -462,27 +470,43 @@ export default function LoginPage() {
                   </div>
                 </div>
 
+                <div className="p-3 rounded-lg bg-forest/5 dark:bg-paper-light/5 border border-forest/15 dark:border-paper-light/15 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-mono font-bold text-forest dark:text-paper-light">
+                      Demo OTP: <strong className="text-coral">123456</strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQuickFillDemoOtp}
+                    className="text-xs font-bold text-coral hover:underline cursor-pointer px-2.5 py-1 rounded bg-coral/10 border border-coral/20"
+                  >
+                    Quick Fill & Enter
+                  </button>
+                </div>
+
                 <div className="flex items-center justify-between text-xs text-forest/70 dark:text-paper-light/70 font-mono">
                   {canResend ? (
                     <button
                       type="button"
                       onClick={() => handleSendOtp({ preventDefault: () => {} } as React.FormEvent)}
-                      className="text-coral hover:underline font-bold"
+                      className="text-coral hover:underline font-bold cursor-pointer"
                     >
                       Resend code
                     </button>
                   ) : (
-                    <span>Resend in {resendTimer}s</span>
+                    <span>Resend code in {resendTimer}s</span>
                   )}
-                  <span className="text-[11px] text-forest/40 dark:text-paper-light/40">
-                    Test: 123456
+                  <span className="text-[11px] text-forest/50 dark:text-paper-light/50">
+                    Bypass: 123456 / 999999
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => triggerVerifyOtp()}
-                  disabled={isLoading || otpDigits.some((d) => !d)}
+                  disabled={isLoading || (otpDigits.join("").length !== 4 && otpDigits.join("").length !== 6)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-md bg-forest text-paper-light dark:bg-paper-light dark:text-forest text-sm font-bold tracking-wide border border-forest dark:border-paper-light transition-all disabled:opacity-50"
                 >
                   {isLoading ? (

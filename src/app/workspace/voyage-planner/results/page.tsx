@@ -68,7 +68,7 @@ export default function VoyagePlannerResultsPage() {
   }
 
   const { port, results, recommendedVesselId, executiveRationale } = comparison;
-  const recommendedResult = results[recommendedVesselId];
+  const recommendedResult = results[recommendedVesselId] || results.vesselB || Object.values(results)[0];
 
   return (
     <div className="min-h-screen bg-paper-light dark:bg-paper-dark text-forest dark:text-paper-light flex flex-col font-sans transition-colors selection:bg-coral selection:text-paper-light">

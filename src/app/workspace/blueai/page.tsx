@@ -204,7 +204,7 @@ Every answer I deliver is cross-referenced with exact **filename** and **page nu
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-coral">
-              PHASE 5 • RAG DOCUMENT INTELLIGENCE
+              BLUEAI COPILOT • DOCUMENT INTELLIGENCE
             </span>
             <span className="text-xs font-mono text-forest/60 dark:text-paper-light/60">
               SUPABASE STORAGE + PGVECTOR COMPLIANT

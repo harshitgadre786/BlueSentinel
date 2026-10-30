@@ -235,7 +235,7 @@ export default function ReportsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-forest/15 dark:border-paper-light/15">
           <div className="space-y-1">
             <span className="text-xs font-mono uppercase tracking-widest text-coral">
-              PHASE 8 • EXECUTIVE VOYAGE BRIEF
+              EXECUTIVE DECISION BRIEF • PORT ENTRY AUDIT
             </span>
             <h1 className="font-serif text-3xl sm:text-4xl font-black tracking-tight">
               BlueSentinel Voyage Decision Brief
