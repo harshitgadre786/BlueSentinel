@@ -69,28 +69,6 @@ export default function VoyagePlannerPage() {
   const [availableVessels, setAvailableVessels] = useState<DemoVessel[]>([]);
   const [selectedVessel, setSelectedVessel] = useState<DemoVessel>(CHARTERED_FLEET.vesselB);
 
-  // Initialize and react to cargo type changes
-  useEffect(() => {
-    const vessels = getVesselsForCargo(inputs.cargoType);
-    setAvailableVessels(vessels);
-
-    // Pick first matching vessel or keep current if still valid
-    const currentStillValid = vessels.find((v) => v.id === inputs.selectedVesselId);
-    const primary = currentStillValid || vessels[0];
-
-    if (primary) {
-      setSelectedVessel(primary);
-      setInputs((prev) => ({
-        ...prev,
-        selectedVesselId: primary.id,
-        targetDraftM: primary.loadedDraft,
-        vesselBeamM: primary.beam,
-        vesselDwtMT: primary.dwt,
-        permissiblePayloadMT: primary.permissiblePayloadMT || Math.round(primary.dwt * 0.95),
-      }));
-    }
-  }, [inputs.cargoType, inputs.selectedVesselId]);
-
   const selectedMajorPort = getMajorPort(inputs.destinationPortId) || INDIAN_MAJOR_PORTS[0];
   const selectedOriginMajor = getMajorPort(inputs.originPortId);
   const selectedOriginHub = getInternationalHub(inputs.originPortId);
@@ -109,11 +87,45 @@ export default function VoyagePlannerPage() {
   const transitHours = voyageNM > 0 ? Math.round(voyageNM / vesselSpeed) : 0;
   const isDomesticVoyage = !!selectedOriginMajor && !!selectedMajorPort;
 
-  // 3. Draft Check
+  // 3. Draft Check & Vessel Rejection Check
+  const isSelectedVesselRejected = selectedVessel
+    ? (selectedVessel.loadedDraft > selectedMajorPort.maxBerthDraftM)
+    : false;
+  const isFormBlocked = isSamePort || isSelectedVesselRejected;
+
   const effectiveDraft = inputs.targetDraftM || selectedVessel?.loadedDraft || 13.3;
   const maxBerthDraft = selectedMajorPort.maxBerthDraftM;
   const isDraftExceeded = effectiveDraft > maxBerthDraft;
   const draftDifferenceM = Math.abs(Number((effectiveDraft - maxBerthDraft).toFixed(2)));
+
+  // Synchronize available vessels and reactively bind compliant active vessel
+  useEffect(() => {
+    const vessels = getVesselsForCargo(inputs.cargoType);
+    setAvailableVessels(vessels);
+
+    const portDraft = selectedMajorPort.maxBerthDraftM;
+    const compliant = vessels.filter((v) => v.loadedDraft <= portDraft);
+    const currentInPool = vessels.find((v) => v.id === inputs.selectedVesselId);
+
+    // Prefer current vessel if compliant; otherwise first compliant vessel; otherwise first in pool
+    const candidate = (currentInPool && currentInPool.loadedDraft <= portDraft)
+      ? currentInPool
+      : compliant[0] || currentInPool || vessels[0];
+
+    if (candidate) {
+      setSelectedVessel(candidate);
+      if (candidate.id !== inputs.selectedVesselId) {
+        setInputs((prev) => ({
+          ...prev,
+          selectedVesselId: candidate.id,
+          targetDraftM: candidate.loadedDraft,
+          vesselBeamM: candidate.beam,
+          vesselDwtMT: candidate.dwt,
+          permissiblePayloadMT: candidate.permissiblePayloadMT || Math.round(candidate.dwt * 0.95),
+        }));
+      }
+    }
+  }, [inputs.cargoType, inputs.destinationPortId, inputs.selectedVesselId, selectedMajorPort.maxBerthDraftM]);
 
   // Handle Cargo Selection change with auto-parameters
   const handleCargoTypeChange = (selectedName: string) => {
@@ -122,7 +134,9 @@ export default function VoyagePlannerPage() {
     ) || CARGO_PROFILES.dry_bulk_coal;
 
     const filteredVessels = getVesselsForCargo(selectedName);
-    const candidate = filteredVessels[0] || CHARTERED_FLEET.vesselB;
+    const portDraft = selectedMajorPort.maxBerthDraftM;
+    const compliant = filteredVessels.filter((v) => v.loadedDraft <= portDraft);
+    const candidate = compliant[0] || filteredVessels[0] || CHARTERED_FLEET.vesselB;
 
     setSelectedVessel(candidate);
     setInputs((prev) => ({
@@ -163,6 +177,10 @@ export default function VoyagePlannerPage() {
     e.preventDefault();
     if (isSamePort) {
       alert("Origin and Destination cannot be identical. Please select different ports for coastal transit.");
+      return;
+    }
+    if (isSelectedVesselRejected) {
+      alert(`Selected vessel (${selectedVessel?.name}) draft (${selectedVessel?.loadedDraft}m) exceeds ${selectedMajorPort.name} max draft (${selectedMajorPort.maxBerthDraftM}m). Please select a compliant vessel or choose another destination port.`);
       return;
     }
     if (typeof window !== "undefined") {
@@ -621,69 +639,113 @@ export default function VoyagePlannerPage() {
                 No compliant chartered vessels in range for this cargo class. Adjust filters or port radius.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {availableVessels.map((v) => {
-                  const isSelected = selectedVessel?.id === v.id;
-                  return (
-                    <div
-                      key={v.id}
-                      onClick={() => handleSelectVessel(v)}
-                      className={`p-6 rounded-lg border transition-all cursor-pointer space-y-3 relative ${
-                        isSelected
-                          ? "bg-forest/10 dark:bg-paper-light/10 border-forest dark:border-paper-light ring-2 ring-coral"
-                          : "bg-paper-surface/40 dark:bg-paper-dark-surface/30 border-forest/15 dark:border-paper-light/15 hover:border-forest/40"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-serif font-bold text-lg text-forest dark:text-paper-light flex items-center gap-1.5">
-                            <span>{v.name}</span>
-                            {isSelected && (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            )}
+              <div className="space-y-4">
+                {/* Alert if all vessels in category exceed port draft */}
+                {availableVessels.every((v) => v.loadedDraft > selectedMajorPort.maxBerthDraftM) && (
+                  <div className="p-4 rounded-lg bg-red-500/10 border-2 border-red-500 text-xs flex items-start gap-3 animate-in fade-in">
+                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <div className="font-bold text-red-700 dark:text-red-300 flex items-center gap-2">
+                        <span>All Available Chartered Vessels Exceed {selectedMajorPort.name} Berth Draft ({selectedMajorPort.maxBerthDraftM}m)</span>
+                        <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-red-600 text-paper-light">UKC RESTRICTED</span>
+                      </div>
+                      <p className="text-forest/80 dark:text-paper-light/80 text-[11px] leading-relaxed">
+                        No vessels in the {inputs.cargoType} pool can safely enter the approach fairway at full arrival draft. Select a deep-water Indian port (e.g., Visakhapatnam Port at 18.1m or Kamarajar at 16.0m) or arrange compulsory offshore lightering.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {availableVessels.map((v) => {
+                    const isSelected = selectedVessel?.id === v.id;
+                    const isVesselDraftExceeded = v.loadedDraft > selectedMajorPort.maxBerthDraftM;
+                    const ukcMargin = Number((selectedMajorPort.maxBerthDraftM - v.loadedDraft).toFixed(1));
+
+                    return (
+                      <div
+                        key={v.id}
+                        onClick={() => {
+                          if (!isVesselDraftExceeded) {
+                            handleSelectVessel(v);
+                          }
+                        }}
+                        className={`p-6 rounded-lg border transition-all space-y-3 relative ${
+                          isVesselDraftExceeded
+                            ? "bg-red-50/40 dark:bg-red-950/15 border-red-300 dark:border-red-900/50 cursor-not-allowed opacity-80"
+                            : isSelected
+                            ? "bg-forest/10 dark:bg-paper-light/10 border-forest dark:border-paper-light ring-2 ring-coral cursor-pointer"
+                            : "bg-paper-surface/40 dark:bg-paper-dark-surface/30 border-forest/15 dark:border-paper-light/15 hover:border-forest/40 cursor-pointer"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-serif font-bold text-lg text-forest dark:text-paper-light flex items-center gap-1.5">
+                              <span>{v.name}</span>
+                              {isSelected && !isVesselDraftExceeded && (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              )}
+                            </div>
+                            <div className="text-[10px] font-mono text-forest/60 dark:text-paper-light/60 mt-0.5">
+                              IMO: {v.imoNumber} &bull; Flag: {v.flag}
+                            </div>
                           </div>
-                          <div className="text-[10px] font-mono text-forest/60 dark:text-paper-light/60 mt-0.5">
-                            IMO: {v.imoNumber} &bull; Flag: {v.flag}
-                          </div>
+
+                          {/* DYNAMIC REACTIVE COMPLIANCE BADGE */}
+                          {isVesselDraftExceeded ? (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-300 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800 font-bold uppercase shrink-0">
+                              REJECTED
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800 font-bold uppercase shrink-0">
+                              RECOMMENDED
+                            </span>
+                          )}
                         </div>
 
-                        {v.archetype === "DRAFT_RISK" && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-coral/10 text-coral border border-coral/30 font-bold uppercase shrink-0">
-                            Draft Breach
-                          </span>
+                        {/* EXPLICIT REJECTION NOTICE OR CLEARANCE */}
+                        {isVesselDraftExceeded ? (
+                          <div className="p-2.5 rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs font-medium leading-relaxed">
+                            ⚠️ Ineligible: Vessel draft ({v.loadedDraft}m) exceeds {selectedMajorPort.name} limit ({selectedMajorPort.maxBerthDraftM}m). Risk of grounding under SOLAS UKC.
+                          </div>
+                        ) : (
+                          <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                            ✓ Compliant: +{ukcMargin.toFixed(1)}m Under Keel Clearance.
+                          </div>
                         )}
-                        {v.archetype === "RECOMMENDED" && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest text-paper-light dark:bg-paper-light dark:text-forest font-bold uppercase shrink-0">
-                            Recommended
-                          </span>
-                        )}
-                        {v.archetype === "DELAY_RISK" && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-mustard/20 text-mustard-hover dark:text-mustard font-bold uppercase shrink-0">
-                            Delay Sensitive
-                          </span>
-                        )}
-                      </div>
 
-                      <p className="text-xs text-forest/70 dark:text-paper-light/70 leading-relaxed font-sans line-clamp-2">
-                        {v.description}
-                      </p>
+                        <p className="text-xs text-forest/70 dark:text-paper-light/70 leading-relaxed font-sans line-clamp-2">
+                          {v.description}
+                        </p>
 
-                      <div className="pt-3 border-t border-forest/10 dark:border-paper-light/10 grid grid-cols-2 gap-2 text-xs font-mono text-forest/80 dark:text-paper-light/80">
-                        <div>Draft: <strong className={v.loadedDraft > selectedPort.maxPermissibleDraft ? "text-coral" : ""}>{v.loadedDraft}m</strong></div>
-                        <div>Beam: <strong>{v.beam}m</strong></div>
-                        <div>DWT: <strong>{v.dwt.toLocaleString()} MT</strong></div>
-                        <div>Rate: <strong>${v.freightDailyRate.toLocaleString()}/d</strong></div>
-                      </div>
+                        <div className="pt-3 border-t border-forest/10 dark:border-paper-light/10 grid grid-cols-2 gap-2 text-xs font-mono text-forest/80 dark:text-paper-light/80">
+                          <div>
+                            Draft:{" "}
+                            <strong className={isVesselDraftExceeded ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
+                              {v.loadedDraft}m
+                            </strong>
+                          </div>
+                          <div>Beam: <strong>{v.beam}m</strong></div>
+                          <div>DWT: <strong>{v.dwt.toLocaleString()} MT</strong></div>
+                          <div>Rate: <strong>${v.freightDailyRate.toLocaleString()}/d</strong></div>
+                        </div>
 
-                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-forest/60 dark:text-paper-light/60">
-                        <span className="truncate">Port: {v.currentPort}</span>
-                        <span className="font-bold text-coral">
-                          {isSelected ? "ACTIVE SELECTION" : "CLICK TO BIND"}
-                        </span>
+                        <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-forest/60 dark:text-paper-light/60">
+                          <span className="truncate">Port: {v.currentPort}</span>
+                          {isVesselDraftExceeded ? (
+                            <span className="font-bold text-red-600 dark:text-red-400">
+                              DRAFT INELIGIBLE
+                            </span>
+                          ) : (
+                            <span className="font-bold text-coral">
+                              {isSelected ? "ACTIVE SELECTION" : "CLICK TO BIND"}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -696,14 +758,20 @@ export default function VoyagePlannerPage() {
 
             <button
               type="submit"
-              disabled={isSamePort}
+              disabled={isFormBlocked}
               className={`inline-flex items-center justify-center gap-3 px-8 py-4 rounded-md text-sm font-bold tracking-wide border shadow-editorial transition-all ${
-                isSamePort
+                isFormBlocked
                   ? "bg-forest/40 text-paper-light/50 border-forest/20 cursor-not-allowed opacity-60"
                   : "bg-forest text-paper-light dark:bg-paper-light dark:text-forest border-forest dark:border-paper-light hover:translate-x-[-1px] hover:translate-y-[-1px] cursor-pointer"
               }`}
             >
-              <span>{isSamePort ? "Routing Blocked: Same Port Selected" : "Compare Vessels & Run Audit"}</span>
+              <span>
+                {isSamePort
+                  ? "Routing Blocked: Same Port Selected"
+                  : isSelectedVesselRejected
+                  ? `Submission Blocked: ${selectedVessel?.name || "Vessel"} Exceeds Berth Draft`
+                  : "Compare Vessels & Run Audit"}
+              </span>
               <ArrowRight className="w-4 h-4 text-coral" />
             </button>
           </div>
