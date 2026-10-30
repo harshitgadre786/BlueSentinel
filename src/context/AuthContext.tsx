@@ -161,7 +161,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: "Please enter a valid phone number in international format (+91...)." };
     }
 
-    // 1. Try our backend send-otp route (handles Twilio Verify / Twilio SMS directly)
+    // 1. If Supabase is configured, use supabase.auth.signInWithOtp directly
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: sanitizedPhone,
+        });
+
+        if (error) {
+          console.error("Supabase signInWithOtp error:", error.message);
+          return { error: error.message };
+        }
+        return { isDemoFallback: false };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to send phone OTP via Supabase";
+        console.error("Supabase signInWithOtp exception:", msg);
+        return { error: msg };
+      }
+    }
+
+    // 2. If Supabase is not configured, fallback to backend route or demo sandbox
     try {
       const serverRes = await fetch("/api/auth/send-otp", {
         method: "POST",
@@ -179,25 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (fetchErr) {
       console.warn("Backend send-otp exception:", fetchErr);
-    }
-
-    // 2. Try Supabase phone OTP if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { error } = await supabase.auth.signInWithOtp({
-          phone: sanitizedPhone,
-        });
-
-        if (error) {
-          console.warn("Supabase OTP notice:", error.message);
-          return { isDemoFallback: true };
-        }
-        return { isDemoFallback: false };
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to send phone OTP";
-        console.warn("Supabase OTP exception:", msg);
-        return { isDemoFallback: true };
-      }
     }
 
     return {
