@@ -2,103 +2,26 @@
 
 import React, { useState, useMemo } from "react";
 import {
-  IMO_PORTS,
   IMO_CARGO_TYPES,
-  IMO_VESSELS,
-  ImoPort,
-  ImoCargoType,
-  ImoVessel,
 } from "@/data/imo-shipment-data";
 import {
   calculateDynamicImoShipment,
   DynamicVoyageCalculation,
 } from "@/lib/imo-maritime-engine";
-import { persistImoShipment } from "@/lib/imo-maritime-service";
 import {
-  Ship,
   Anchor,
   Compass,
   Navigation,
-  Wind,
   Waves,
   Calendar,
-  Clock,
-  ShieldCheck,
-  ShieldAlert,
-  AlertTriangle,
   FileText,
-  DollarSign,
-  Fuel,
   Leaf,
   CheckCircle2,
-  Sparkles,
   Layers,
-  ArrowRight,
-  Info,
-  ChevronDown,
-  ChevronUp,
   FileCheck2,
-  Save,
-  Check,
-  Gauge,
-  Thermometer,
 } from "lucide-react";
 
 export default function ImoShipmentDashboard() {
-  // Preset Scenarios
-  const PRESET_SCENARIOS = [
-    {
-      id: "paradip_coal",
-      label: "Paradip [INPRT] Thermal Coal",
-      badge: "75k MT IMSBC B",
-      origin: "singapore",
-      dest: "in-paradip",
-      cargo: "dry_bulk_imsbc",
-      vessel: "vesselB",
-      tonnage: 75000,
-    },
-    {
-      id: "jnpa_containers",
-      label: "JNPA [INNSA] Electronics TEU",
-      badge: "42k MT IMDG 9",
-      origin: "singapore",
-      dest: "in-jnpa",
-      cargo: "container_dry",
-      vessel: "vesselB",
-      tonnage: 42000,
-    },
-    {
-      id: "cochin_lng",
-      label: "Cochin [INCOK] Cryogenic LNG",
-      badge: "68k MT UN 1972",
-      origin: "ras_laffan",
-      dest: "in-cochin",
-      cargo: "lng_cryogenic",
-      vessel: "vesselGas",
-      tonnage: 68000,
-    },
-    {
-      id: "kandla_crude",
-      label: "Kandla [INIXY] Crude Oil",
-      badge: "80k MT UN 1267",
-      origin: "fujairah",
-      dest: "in-deendayal",
-      cargo: "liquid_crude_pol",
-      vessel: "vesselTanker",
-      tonnage: 80000,
-    },
-    {
-      id: "ennore_roro",
-      label: "Ennore [INENR] Ro-Ro Auto",
-      badge: "15k MT UN 3166",
-      origin: "singapore",
-      dest: "in-kamarajar",
-      cargo: "ro_ro_automotive",
-      vessel: "vesselA",
-      tonnage: 15000,
-    },
-  ];
-
   // Component State
   const [originPortId, setOriginPortId] = useState<string>("singapore");
   const [destPortId, setDestPortId] = useState<string>("in-paradip");
@@ -110,8 +33,6 @@ export default function ImoShipmentDashboard() {
   );
 
   const [activeTab, setActiveTab] = useState<"VGM" | "DG_MANIFEST" | "SDS" | "BILL_LADING">("VGM");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const [expandedSection, setExpandedSection] = useState<string | null>("all");
 
   // Reactive Calculation
   const calculation: DynamicVoyageCalculation = useMemo(() => {
@@ -124,23 +45,6 @@ export default function ImoShipmentDashboard() {
       laycanDate,
     });
   }, [originPortId, destPortId, cargoTypeId, selectedVesselId, cargoTonnage, laycanDate]);
-
-  const handleApplyPreset = (preset: typeof PRESET_SCENARIOS[0]) => {
-    setOriginPortId(preset.origin);
-    setDestPortId(preset.dest);
-    setCargoTypeId(preset.cargo);
-    setSelectedVesselId(preset.vessel);
-    setCargoTonnage(preset.tonnage);
-  };
-
-  const handleSaveToAudit = async () => {
-    setSaveStatus("saving");
-    await persistImoShipment(calculation);
-    setTimeout(() => {
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    }, 400);
-  };
 
   // Color helper for CII ratings
   const getCiiBadgeColor = (rating: string) => {
@@ -166,86 +70,12 @@ export default function ImoShipmentDashboard() {
   };
 
   return (
-    <section className="space-y-8 rounded-2xl bg-paper-surface/60 dark:bg-paper-dark-surface/50 border border-forest/15 dark:border-paper-light/15 p-6 sm:p-8 shadow-sm">
-      {/* Header & Standard Badge */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-forest/15 dark:border-paper-light/15">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono font-bold tracking-widest uppercase text-coral">
-            <ShieldCheck className="w-4 h-4 text-coral" />
-            <span>IMO & UN/LOCODE Statutory Maritime Intelligence Console</span>
-          </div>
-          <h2 className="font-serif text-2xl sm:text-3xl font-black text-forest dark:text-paper-light tracking-tight mt-1">
-            Dynamic Shipment & Fleet Compliance Monitor
-          </h2>
-          <p className="text-xs sm:text-sm text-forest/70 dark:text-paper-light/70 font-normal mt-1 max-w-2xl">
-            Live deterministic computations conforming to IMO Conventions (MARPOL Annex VI, SOLAS VI/VII, IMSBC, IMDG, IGC Codes). Data dynamically recalibrates upon selecting any port or cargo.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 self-start md:self-center">
-          <button
-            type="button"
-            onClick={handleSaveToAudit}
-            disabled={saveStatus === "saving"}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-forest text-paper-light dark:bg-paper-light dark:text-forest text-xs font-bold transition-all hover:bg-forest/90 dark:hover:bg-paper-light/90 disabled:opacity-50 cursor-pointer shadow-sm"
-          >
-            {saveStatus === "saving" ? (
-              <>
-                <Clock className="w-3.5 h-3.5 animate-spin" />
-                <span>Recording Audit...</span>
-              </>
-            ) : saveStatus === "saved" ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Saved to Relational DB</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5 text-coral" />
-                <span>Save to Fleet Log</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Preset Quick Selectors */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-mono uppercase tracking-wider text-forest/60 dark:text-paper-light/60 font-bold flex items-center gap-1.5">
-          <Sparkles className="w-3 h-3 text-mustard" />
-          <span>Real-World Benchmark Scenarios:</span>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {PRESET_SCENARIOS.map((p) => {
-            const isActive =
-              originPortId === p.origin &&
-              destPortId === p.dest &&
-              cargoTypeId === p.cargo;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleApplyPreset(p)}
-                className={`text-xs px-3 py-1.5 rounded-md border font-medium transition-all flex items-center gap-2 ${
-                  isActive
-                    ? "bg-forest text-paper-light dark:bg-paper-light dark:text-forest border-forest dark:border-paper-light shadow-sm font-bold"
-                    : "bg-paper-light dark:bg-paper-dark border-forest/20 dark:border-paper-light/20 text-forest/80 dark:text-paper-light/80 hover:border-forest/50"
-                }`}
-              >
-                <span>{p.label}</span>
-                <span
-                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                    isActive
-                      ? "bg-paper-light/20 text-paper-light dark:bg-forest/20 dark:text-forest font-bold"
-                      : "bg-forest/5 dark:bg-paper-light/5 text-coral"
-                  }`}
-                >
-                  {p.badge}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+    <section className="space-y-6 rounded-2xl bg-paper-surface/60 dark:bg-paper-dark-surface/50 border border-forest/15 dark:border-paper-light/15 p-6 sm:p-8 shadow-sm">
+      {/* Header */}
+      <div className="pb-4 border-b border-forest/15 dark:border-paper-light/15">
+        <h2 className="font-serif text-2xl sm:text-3xl font-black text-forest dark:text-paper-light tracking-tight">
+          Dynamic Shipment & Fleet Compliance Monitor
+        </h2>
       </div>
 
       {/* Reactive Dropdown Controls Bar */}
@@ -254,7 +84,7 @@ export default function ImoShipmentDashboard() {
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
             <Anchor className="w-3.5 h-3.5 text-coral" />
-            <span>Origin Port (LOCODE)</span>
+            <span>Origin Port</span>
           </label>
           <select
             value={originPortId}
@@ -278,17 +108,13 @@ export default function ImoShipmentDashboard() {
               <option value="in-deendayal">Deendayal / Kandla [INIXY]</option>
             </optgroup>
           </select>
-          <div className="text-[11px] font-mono text-forest/50 dark:text-paper-light/50 flex items-center justify-between">
-            <span>UN/LOCODE: {calculation.originPort.locode}</span>
-            <span>{calculation.originPort.country}</span>
-          </div>
         </div>
 
         {/* Destination Port */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
             <Navigation className="w-3.5 h-3.5 text-mustard" />
-            <span>Destination Port (Call)</span>
+            <span>Destination Port</span>
           </label>
           <select
             value={destPortId}
@@ -312,17 +138,13 @@ export default function ImoShipmentDashboard() {
               <option value="in-new-mangalore">New Mangalore [INNML] (Draft: 14.0m)</option>
             </optgroup>
           </select>
-          <div className="text-[11px] font-mono text-forest/50 dark:text-paper-light/50 flex items-center justify-between">
-            <span>UN/LOCODE: {calculation.destPort.locode}</span>
-            <span>Max Berth Draft: {calculation.destPort.maxBerthDraftM}m</span>
-          </div>
         </div>
 
         {/* Cargo Type */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-coral" />
-            <span>Cargo Type / IMO Class</span>
+            <span>Cargo Type</span>
           </label>
           <select
             value={cargoTypeId}
@@ -341,9 +163,6 @@ export default function ImoShipmentDashboard() {
             <option value="breakbulk_machinery">Breakbulk: Heavy Machinery (CSS Code Annex 13)</option>
             <option value="ro_ro_automotive">Ro-Ro: Wheeled Rolling Stock (IMDG Class 9)</option>
           </select>
-          <div className="text-[11px] font-mono text-coral font-semibold truncate">
-            {calculation.cargo.hazardClassification}
-          </div>
         </div>
 
         {/* Cargo Tonnage & Departure */}
@@ -368,18 +187,15 @@ export default function ImoShipmentDashboard() {
               className="w-1/2 bg-paper-surface dark:bg-paper-dark-surface border border-forest/20 dark:border-paper-light/20 rounded-md p-2 text-xs text-forest dark:text-paper-light font-mono focus:outline-none"
             />
           </div>
-          <div className="text-[11px] font-mono text-forest/50 dark:text-paper-light/50">
-            Density: {calculation.cargo.densityT_M3} t/m³ | Stowage: {calculation.cargo.stowageFactorM3_MT} m³/t
-          </div>
         </div>
       </div>
 
-      {/* DYNAMIC 4-COLUMN MARITIME METRICS DISPLAY */}
+      {/* 4-COLUMN SUMMARY METRICS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Nautical Distance & Dynamic ETA */}
-        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-3">
+        {/* Metric 1: Distance & Transit */}
+        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-forest/60 dark:text-paper-light/60">
-            <span className="font-bold uppercase flex items-center gap-1">
+            <span className="font-bold uppercase flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5 text-coral" />
               Routing & ETA
             </span>
@@ -387,43 +203,34 @@ export default function ImoShipmentDashboard() {
               {calculation.vessel.serviceSpeedKnots} KTS
             </span>
           </div>
-
           <div>
             <div className="text-2xl font-serif font-black text-forest dark:text-paper-light">
-              {calculation.distanceNM.toLocaleString()} <span className="text-sm font-sans font-normal text-forest/60 dark:text-paper-light/60">NM</span>
+              {calculation.distanceNM.toLocaleString()}{" "}
+              <span className="text-sm font-sans font-normal text-forest/60 dark:text-paper-light/60">
+                NM
+              </span>
             </div>
             <div className="text-xs text-forest/70 dark:text-paper-light/70 font-mono mt-0.5">
               Transit: {calculation.transitDays} Days ({calculation.transitHours}h sea leg)
             </div>
           </div>
-
-          <div className="pt-2 border-t border-forest/10 dark:border-paper-light/10 space-y-1.5 text-xs font-mono">
-            <div className="flex justify-between items-center text-forest/70 dark:text-paper-light/70">
-              <span>Pilot Boarding:</span>
-              <strong className="text-forest dark:text-paper-light text-[11px]">{calculation.etaPilotStation}</strong>
-            </div>
-            <div className="flex justify-between items-center text-forest/70 dark:text-paper-light/70">
-              <span>Berth Arrival:</span>
-              <strong className="text-coral text-[11px]">{calculation.etaBerthArrival}</strong>
-            </div>
-            <div className="text-[10px] text-forest/50 dark:text-paper-light/50">
-              *Includes +{calculation.preBerthingWaitHours}h pre-berthing queue
-            </div>
-          </div>
         </div>
 
-        {/* Metric 2: Berth Congestion & Port Tariffs */}
-        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-3">
+        {/* Metric 2: Port Tariffs */}
+        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-forest/60 dark:text-paper-light/60">
-            <span className="font-bold uppercase flex items-center gap-1">
+            <span className="font-bold uppercase flex items-center gap-1.5">
               <Anchor className="w-3.5 h-3.5 text-mustard" />
               Berth & Tariffs
             </span>
-            <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${getCongestionBadgeColor(calculation.destPort.congestion.status)}`}>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded border font-bold ${getCongestionBadgeColor(
+                calculation.destPort.congestion.status
+              )}`}
+            >
               {calculation.destPort.congestion.status}
             </span>
           </div>
-
           <div>
             <div className="text-2xl font-serif font-black text-forest dark:text-paper-light">
               ${calculation.tariffsUSD.totalPortTariffUSD.toLocaleString()}
@@ -432,33 +239,12 @@ export default function ImoShipmentDashboard() {
               ₹{calculation.tariffsUSD.totalPortTariffINR.toLocaleString()} INR
             </div>
           </div>
-
-          <div className="pt-2 border-t border-forest/10 dark:border-paper-light/10 space-y-1 text-xs font-mono text-forest/70 dark:text-paper-light/70">
-            <div className="flex justify-between">
-              <span>Avg Pre-Berth Wait:</span>
-              <strong>{calculation.destPort.congestion.avgPreBerthingHours} Hours</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Queued Vessels:</span>
-              <strong>{calculation.destPort.congestion.queuedVesselsCount} Ships at Roads</strong>
-            </div>
-            <div className="flex justify-between text-[11px]">
-              <span>Pilot + Berth + Tugs:</span>
-              <span>${(calculation.tariffsUSD.pilotage + calculation.tariffsUSD.berthHire + calculation.tariffsUSD.tugAssistance).toLocaleString()}</span>
-            </div>
-            {calculation.tariffsUSD.greenIncentiveCredit > 0 && (
-              <div className="flex justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-                <span>Green ESI Discount:</span>
-                <span>-${calculation.tariffsUSD.greenIncentiveCredit.toLocaleString()}</span>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Metric 3: Weather, Sea State & Beaufort Scale */}
-        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-3">
+        {/* Metric 3: Weather & Sea State */}
+        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-forest/60 dark:text-paper-light/60">
-            <span className="font-bold uppercase flex items-center gap-1">
+            <span className="font-bold uppercase flex items-center gap-1.5">
               <Waves className="w-3.5 h-3.5 text-blue-500" />
               Weather & Sea State
             </span>
@@ -466,74 +252,46 @@ export default function ImoShipmentDashboard() {
               BFT {calculation.destPort.weatherSeaState.beaufortScale}
             </span>
           </div>
-
           <div>
             <div className="text-2xl font-serif font-black text-forest dark:text-paper-light">
-              {calculation.destPort.weatherSeaState.waveHeightM}m <span className="text-xs font-sans font-normal text-forest/60 dark:text-paper-light/60">Significant Wave</span>
+              {calculation.destPort.weatherSeaState.waveHeightM}m{" "}
+              <span className="text-xs font-sans font-normal text-forest/60 dark:text-paper-light/60">
+                Significant Wave
+              </span>
             </div>
             <div className="text-xs text-forest/70 dark:text-paper-light/70 font-mono mt-0.5">
               {calculation.destPort.weatherSeaState.beaufortDescription}
             </div>
           </div>
-
-          <div className="pt-2 border-t border-forest/10 dark:border-paper-light/10 space-y-1 text-xs font-mono text-forest/70 dark:text-paper-light/70">
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-1">
-                <Wind className="w-3 h-3 text-forest/50 dark:text-paper-light/50" />
-                Wind:
-              </span>
-              <strong>{calculation.destPort.weatherSeaState.windSpeedKnots} kts ({calculation.destPort.weatherSeaState.windDirection})</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Swell Condition:</span>
-              <strong>{calculation.destPort.weatherSeaState.swellDirection}</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>Tidal Range / Current:</span>
-              <strong>{calculation.destPort.weatherSeaState.tidalRangeM}m / {calculation.destPort.weatherSeaState.currentSpeedKnots} kts</strong>
-            </div>
-          </div>
         </div>
 
-        {/* Metric 4: IMO CII & MARPOL Annex VI Decarbonization */}
-        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-3">
+        {/* Metric 4: IMO CII Rating */}
+        <div className="p-4 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-forest/60 dark:text-paper-light/60">
-            <span className="font-bold uppercase flex items-center gap-1">
+            <span className="font-bold uppercase flex items-center gap-1.5">
               <Leaf className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               IMO CII Rating
             </span>
-            <span className={`text-xs px-2.5 py-0.5 rounded border font-black font-serif ${getCiiBadgeColor(calculation.ciiRating)}`}>
+            <span
+              className={`text-xs px-2.5 py-0.5 rounded border font-black font-serif ${getCiiBadgeColor(
+                calculation.ciiRating
+              )}`}
+            >
               GRADE {calculation.ciiRating}
             </span>
           </div>
-
           <div>
             <div className="text-2xl font-serif font-black text-forest dark:text-paper-light">
-              {calculation.attainedCII} <span className="text-xs font-sans font-normal text-forest/60 dark:text-paper-light/60">g CO₂/DWT·NM</span>
-            </div>
-            <div className="text-xs font-mono text-forest/70 dark:text-paper-light/70 mt-0.5">
-              Ref Baseline: {calculation.requiredCII} (Ratio: {calculation.ciiRatio})
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-forest/10 dark:border-paper-light/10 space-y-1 text-xs font-mono text-forest/70 dark:text-paper-light/70">
-            <div className="flex justify-between">
-              <span>Total Fuel Consumed:</span>
-              <strong>{calculation.totalFuelBurnMT} MT {calculation.vessel.fuelType}</strong>
-            </div>
-            <div className="flex justify-between">
-              <span>GHG CO₂ Emitted:</span>
-              <strong>{calculation.totalCo2EmissionsMT} MT</strong>
-            </div>
-            <div className="flex justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-bold truncate">
-              <span>MARPOL Annex VI:</span>
-              <span>{calculation.marpolAnnexViStatus.slice(0, 22)}...</span>
+              {calculation.attainedCII}{" "}
+              <span className="text-xs font-sans font-normal text-forest/60 dark:text-paper-light/60">
+                g CO₂/DWT·NM
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* DETAILED DYNAMIC CONTEXT ACCORDION: STOWAGE, SEGREGATION & STATUTORY DOCS */}
+      {/* DETAILED DYNAMIC CONTEXT: STOWAGE, SEGREGATION & STATUTORY DOCS */}
       <div className="space-y-6 pt-4 border-t border-forest/15 dark:border-paper-light/15">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column: Cargo Stowage & Segregation Protocol */}
