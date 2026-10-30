@@ -267,43 +267,6 @@ export default function VoyagePlannerPage() {
                 </select>
               </div>
             </div>
-
-            {/* Realistic Cargo Regulatory Details Bar */}
-            <div className="pt-4 border-t border-forest/10 dark:border-paper-light/10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-              <div className="p-3 rounded bg-forest/5 dark:bg-paper-light/5 border border-forest/10 dark:border-paper-light/10">
-                <span className="text-forest/50 dark:text-paper-light/50 block text-[10px] uppercase font-sans font-bold">
-                  UN & Hazardous Class
-                </span>
-                <span className="font-bold text-coral">{inputs.unNumber || "N/A"}</span>
-                <div className="text-[11px] text-forest/70 dark:text-paper-light/70 mt-0.5">
-                  {inputs.imdgClass || "Non-IMDG"}
-                </div>
-              </div>
-
-              <div className="p-3 rounded bg-forest/5 dark:bg-paper-light/5 border border-forest/10 dark:border-paper-light/10">
-                <span className="text-forest/50 dark:text-paper-light/50 block text-[10px] uppercase font-sans font-bold">
-                  SOLAS Verified Gross Mass (VGM)
-                </span>
-                <span className="font-bold text-forest dark:text-paper-light">
-                  {inputs.vgmMethod?.split("(")[0] || "Certified Scale"}
-                </span>
-                <div className="text-[10px] text-forest/60 dark:text-paper-light/60 mt-0.5 truncate">
-                  {inputs.vgmMethod}
-                </div>
-              </div>
-
-              <div className="p-3 rounded bg-forest/5 dark:bg-paper-light/5 border border-forest/10 dark:border-paper-light/10">
-                <span className="text-forest/50 dark:text-paper-light/50 block text-[10px] uppercase font-sans font-bold">
-                  Selected Vessel Permissible Payload
-                </span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  {inputs.permissiblePayloadMT?.toLocaleString() || "61,275"} MT
-                </span>
-                <div className="text-[10px] text-forest/60 dark:text-paper-light/60 mt-0.5">
-                  {selectedVessel?.name} (DWT: {inputs.vesselDwtMT?.toLocaleString()} MT)
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Step 2: Commercial & Operational Inputs */}
