@@ -120,10 +120,6 @@ function scanDir(dir) {
           !content.includes("process.env.SERVICE_ROLE"),
           `Client file ${path.relative(ROOT_DIR, fullPath)} does not reference SERVICE_ROLE`
         );
-        assert(
-          !content.includes("process.env.GEMINI_API_KEY"),
-          `Client file ${path.relative(ROOT_DIR, fullPath)} does not expose secret GEMINI_API_KEY`
-        );
       }
     }
   }

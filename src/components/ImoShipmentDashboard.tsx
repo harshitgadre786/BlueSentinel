@@ -14,7 +14,6 @@ import {
   DynamicVoyageCalculation,
 } from "@/lib/imo-maritime-engine";
 import { persistImoShipment } from "@/lib/imo-maritime-service";
-import RAGMaritimeAssistant from "./RAGMaritimeAssistant";
 import {
   Ship,
   Anchor,
@@ -767,18 +766,6 @@ export default function ImoShipmentDashboard() {
           </div>
         </div>
       </div>
-
-      {/* Floating Gemini RAG Maritime Assistant connected to active shipment */}
-      <RAGMaritimeAssistant
-        shipmentContext={{
-          originPortId,
-          destPortId,
-          cargoTypeId,
-          vesselId: selectedVesselId,
-          cargoTonnageMT: cargoTonnage,
-          laycanDate,
-        }}
-      />
     </section>
   );
 }
