@@ -132,6 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         provider: "google",
         options: {
           redirectTo: `${siteUrl}/workspace`,
+          queryParams: {
+            prompt: "select_account",
+            access_type: "offline",
+          },
         },
       });
 
@@ -148,35 +152,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendPhoneOtp = async (
     phone: string
   ): Promise<{ error?: string; isDemoFallback?: boolean }> => {
+    const cleanDigits = phone.replace(/\D/g, "");
+    const sanitizedPhone = phone.trim().startsWith("+")
+      ? `+${cleanDigits}`
+      : `+${cleanDigits}`;
+
+    if (cleanDigits.length < 8) {
+      return { error: "Please enter a valid phone number in international format (+91...)." };
+    }
+
     // 1. Try our backend send-otp route (handles Twilio Verify / Twilio SMS directly)
     try {
       const serverRes = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: sanitizedPhone }),
       });
       if (serverRes.ok) {
         const sData = await serverRes.json();
         if (sData.provider === "twilio-verify" || sData.provider === "twilio-sms") {
           return { isDemoFallback: false };
         }
+        if (sData.provider === "sandbox" || sData.demoCode) {
+          return { isDemoFallback: true };
+        }
       }
-    } catch {
-      // Continue to Supabase or sandbox
+    } catch (fetchErr) {
+      console.warn("Backend send-otp exception:", fetchErr);
     }
 
     // 2. Try Supabase phone OTP if configured
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.auth.signInWithOtp({
-          phone,
+          phone: sanitizedPhone,
         });
 
         if (error) {
           console.warn("Supabase OTP notice:", error.message);
           return { isDemoFallback: true };
         }
-        return {};
+        return { isDemoFallback: false };
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to send phone OTP";
         console.warn("Supabase OTP exception:", msg);
@@ -194,6 +210,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     token: string
   ): Promise<{ error?: string }> => {
     const cleanToken = token.trim();
+    const cleanPhoneDigits = phone.replace(/\D/g, "");
+    const sanitizedPhone = phone.trim().startsWith("+")
+      ? `+${cleanPhoneDigits}`
+      : `+${cleanPhoneDigits}`;
+
     const isMasterCode =
       cleanToken === "123456" ||
       cleanToken === "999999" ||
@@ -205,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isMasterCode || !isSupabaseConfigured || !supabase) {
       const demoUser: AuthUser = {
         id: "demo_usr_" + Date.now(),
-        phone: phone || "+91 98765 43210",
+        phone: sanitizedPhone || "+919876543210",
         name: "Captain Sharma",
         role: "Master Mariner / Charterer",
         email: "captain.sharma@bluesentinel.maritime",
@@ -221,7 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await fetch("/api/auth/verify-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, otp: cleanToken }),
+          body: JSON.stringify({ phone: sanitizedPhone, otp: cleanToken }),
         });
       } catch {
         // Continue client-side session
@@ -229,11 +250,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return {};
     }
 
+    // Try backend verification first (for live Twilio Verify or Twilio SMS check)
+    try {
+      const verifyRes = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: sanitizedPhone, otp: cleanToken }),
+      });
+      if (verifyRes.ok) {
+        const vData = await verifyRes.json();
+        if (vData.success && vData.user) {
+          const verifiedUser: AuthUser = {
+            id: vData.user.id || "usr_captain_7860",
+            phone: vData.user.phone || sanitizedPhone,
+            name: vData.user.name || "Captain Sharma",
+            role: vData.user.role || "Master Mariner / Charterer",
+            email: vData.user.email || "captain.sharma@bluesentinel.maritime",
+            isDemo: !!vData.user.isDemo,
+          };
+          setUser(verifiedUser);
+          if (typeof window !== "undefined") {
+            localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(verifiedUser));
+            document.cookie = `bluesentinel_session=${encodeURIComponent(JSON.stringify(verifiedUser))}; path=/; max-age=604800`;
+          }
+          return {};
+        }
+      }
+    } catch (twCheckErr) {
+      console.warn("Backend verify-otp notice:", twCheckErr);
+    }
+
     // Try live Supabase verification
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.auth.verifyOtp({
-          phone,
+          phone: sanitizedPhone,
           token: cleanToken,
           type: "sms",
         });
@@ -241,7 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data?.user) {
           const newUser: AuthUser = {
             id: data.user.id,
-            phone: data.user.phone || phone,
+            phone: data.user.phone || sanitizedPhone,
             name: "Captain Sharma",
             role: "Master Mariner / Charterer",
             email: data.user.email,
@@ -260,9 +311,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn("Live SMS service failed, activating resilient demo fallback:", error.message);
           const demoUser: AuthUser = {
             id: "demo_usr_" + Date.now(),
-            phone: phone,
+            phone: sanitizedPhone,
             name: "Captain Sharma",
-        role: "Master Mariner / Charterer",
+            role: "Master Mariner / Charterer",
             email: "captain.sharma@bluesentinel.maritime",
             isDemo: true,
           };
@@ -282,9 +333,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (isValidDigits) {
           const demoUser: AuthUser = {
             id: "demo_usr_" + Date.now(),
-            phone: phone,
+            phone: sanitizedPhone,
             name: "Captain Sharma",
-        role: "Master Mariner / Charterer",
+            role: "Master Mariner / Charterer",
             email: "captain.sharma@bluesentinel.maritime",
             isDemo: true,
           };
@@ -303,7 +354,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isValidDigits) {
       const demoUser: AuthUser = {
         id: "demo_usr_" + Date.now(),
-        phone: phone,
+        phone: sanitizedPhone,
         name: "Captain Sharma",
         role: "Master Mariner / Charterer",
         email: "captain.sharma@bluesentinel.maritime",

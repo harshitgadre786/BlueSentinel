@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  Sparkles,
 } from "lucide-react";
 
 const COUNTRY_CODES = [
@@ -35,7 +34,6 @@ export default function LoginPage() {
     signInWithGoogle,
     sendPhoneOtp,
     verifyPhoneOtp,
-    loginDemoUser,
   } = useAuth();
 
   // If already logged in, redirect to workspace
@@ -93,43 +91,72 @@ export default function LoginPage() {
     }
   };
 
+  // Helper to sanitize & format E.164 phone number (+919876543210)
+  const sanitizeToE164 = (countryCode: string, rawNumber: string) => {
+    const cleanCc = countryCode.startsWith("+")
+      ? countryCode
+      : `+${countryCode.replace(/\D/g, "")}`;
+    let cleanDigits = rawNumber.replace(/\D/g, "").replace(/^0+/, "");
+    const ccDigits = cleanCc.replace(/\D/g, "");
+    if (cleanDigits.startsWith(ccDigits) && cleanDigits.length > 10) {
+      cleanDigits = cleanDigits.slice(ccDigits.length);
+    }
+    const fullPhone = `${cleanCc}${cleanDigits}`;
+    const isValid =
+      cleanDigits.length >= 7 &&
+      cleanDigits.length <= 15 &&
+      /^\+[1-9]\d{7,14}$/.test(fullPhone);
+    return { fullPhone, cleanDigits, isValid };
+  };
+
   // Handle Phone OTP Request
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const cleanNumber = phoneNumber.replace(/[^0-9]/g, "");
-    if (cleanNumber.length < 7) {
-      setErrorMsg("Please enter a valid phone number.");
+    const { fullPhone, cleanDigits, isValid } = sanitizeToE164(
+      selectedCountryCode,
+      phoneNumber
+    );
+
+    if (!cleanDigits || cleanDigits.length < 7 || !isValid) {
+      setErrorMsg("Please enter a valid mobile number in international format (+919876543210).");
       return;
     }
 
-    const fullPhone = `${selectedCountryCode}${cleanNumber}`;
-    setIsLoading(true);
+    try {
+      setIsLoading(true);
+      const result = await sendPhoneOtp(fullPhone);
+      setIsLoading(false);
 
-    const result = await sendPhoneOtp(fullPhone);
-    setIsLoading(false);
+      if (result.error) {
+        setErrorMsg(result.error);
+        return;
+      }
 
-    if (result.error) {
-      setErrorMsg(result.error);
-      return;
+      if (result.isDemoFallback) {
+        setSuccessMsg("Verification code dispatched (Demo Access Code: 123456 ready).");
+      } else {
+        setSuccessMsg(`Verification code dispatched to ${fullPhone}`);
+      }
+
+      setStep("OTP_VERIFY");
+      setResendTimer(45);
+      setCanResend(false);
+
+      // Auto focus first OTP input box
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 100);
+    } catch (err: unknown) {
+      setIsLoading(false);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to send verification code. Please check your network and try again.";
+      setErrorMsg(msg);
     }
-
-    if (result.isDemoFallback) {
-      setSuccessMsg("Sandbox code 123456 ready.");
-    } else {
-      setSuccessMsg(`Verification code dispatched to ${fullPhone}`);
-    }
-
-    setStep("OTP_VERIFY");
-    setResendTimer(45);
-    setCanResend(false);
-
-    // Auto focus first OTP input box
-    setTimeout(() => {
-      otpInputRefs.current[0]?.focus();
-    }, 100);
   };
 
   // Handle OTP digit changes
@@ -196,19 +223,28 @@ export default function LoginPage() {
     }
     const code = rawCode;
 
-    const cleanNumber = phoneNumber.replace(/[^0-9]/g, "");
-    const fullPhone = `${selectedCountryCode}${cleanNumber}`;
+    const { fullPhone } = sanitizeToE164(selectedCountryCode, phoneNumber);
+    const targetPhone = fullPhone.length > 3 ? fullPhone : "+919876543210";
 
     setErrorMsg(null);
     setIsLoading(true);
 
-    const result = await verifyPhoneOtp(fullPhone, code);
-    setIsLoading(false);
+    try {
+      const result = await verifyPhoneOtp(targetPhone, code);
+      setIsLoading(false);
 
-    if (result.error) {
-      setErrorMsg(result.error);
-    } else {
-      router.push("/workspace");
+      if (result.error) {
+        setErrorMsg(result.error);
+      } else {
+        router.push("/workspace");
+      }
+    } catch (err: unknown) {
+      setIsLoading(false);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Verification failed. Please check your credentials and try again.";
+      setErrorMsg(msg);
     }
   };
 
@@ -400,21 +436,6 @@ export default function LoginPage() {
                     )}
                   </button>
                 </form>
-
-                {/* 1-Click Fast Track for Reviewers */}
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      loginDemoUser();
-                      router.push("/workspace");
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs text-forest/70 dark:text-paper-light/70 hover:text-coral transition-colors underline underline-offset-4"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-mustard" />
-                    <span>Quick Pilot: Explore as Captain Sharma</span>
-                  </button>
-                </div>
               </div>
             ) : (
               /* Step 2: 6 Individual OTP Boxes */
@@ -496,7 +517,7 @@ export default function LoginPage() {
                     <span>Resend code in {resendTimer}s</span>
                   )}
                   <span className="text-[11px] text-forest/50 dark:text-paper-light/50">
-                    Bypass: 123456 / 999999
+                    Demo Code: 123456
                   </span>
                 </div>
 
