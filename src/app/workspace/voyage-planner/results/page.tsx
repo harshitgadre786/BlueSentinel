@@ -5,6 +5,7 @@ import Link from "next/link";
 import WorkspaceNav from "@/components/WorkspaceNav";
 import { VoyagePlannerInputs, MultiVesselComparison, VesselEvaluationResult } from "@/lib/maritime-models";
 import { compareThreeVessels } from "@/lib/maritime-calculator";
+import { saveVoyageComparisonLog } from "@/lib/supabase";
 import {
   CheckCircle2,
   XCircle,
@@ -53,6 +54,7 @@ export default function VoyagePlannerResultsPage() {
 
     const res = compareThreeVessels(effectiveInputs);
     setComparison(res);
+    saveVoyageComparisonLog(effectiveInputs, res);
   }, []);
 
   if (!comparison) {

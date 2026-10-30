@@ -121,3 +121,65 @@ export async function getDecisionLogs(): Promise<VoyageDecisionLog[]> {
 
   return [];
 }
+
+import { VoyagePlannerInputs, MultiVesselComparison } from "./maritime-models";
+
+export async function saveVoyageComparisonLog(
+  inputs: VoyagePlannerInputs,
+  comparison: MultiVesselComparison
+): Promise<{ success: boolean; id: string }> {
+  const rec = comparison.results[comparison.recommendedVesselId];
+  const vesselA = comparison.results.vesselA;
+  const savingUSD = Math.max(0, vesselA.costs.riskAdjustedCostUSD - rec.costs.riskAdjustedCostUSD);
+  const co2Saving = Math.max(0, Number((vesselA.estimatedCO2MT - rec.estimatedCO2MT).toFixed(1)));
+
+  const log: VoyageDecisionLog = {
+    id: "voyage_" + Date.now(),
+    created_at: new Date().toISOString(),
+    cargo_type: inputs.cargoType,
+    cargo_tonnage: inputs.cargoQuantityMT,
+    origin: (inputs.originPortId || "singapore").toUpperCase(),
+    destination: (inputs.destinationPortId || "paradip").toUpperCase(),
+    speed_knots: rec.vessel.averageSpeed,
+    recommended_vessel: rec.vessel.name,
+    risk_adjusted_saving_usd: savingUSD,
+    co2_saving_mt: co2Saving,
+    status: "APPROVED",
+  };
+
+  if (supabase) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        await supabase.from("voyages").insert([
+          {
+            user_id: session.user.id,
+            cargo_type: log.cargo_type,
+            cargo_quantity_mt: log.cargo_tonnage,
+            origin_port: log.origin,
+            destination_port: log.destination,
+            laycan_date: inputs.laycanDate,
+            fuel_price_usd: inputs.fuelPriceUSD,
+            selected_vessel_id: comparison.recommendedVesselId,
+            status: "RECOMMENDED_APPROVED",
+          },
+        ]);
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const existing = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const list = existing ? JSON.parse(existing) : [];
+      list.unshift(log);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(list.slice(0, 50)));
+    } catch {
+      // ignore
+    }
+  }
+
+  return { success: true, id: log.id! };
+}

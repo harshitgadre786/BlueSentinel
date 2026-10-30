@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
+import { getDecisionLogs, VoyageDecisionLog } from "@/lib/supabase";
+import { useEffect } from "react";
 import ThemeToggle from "../../components/ThemeToggle";
 import { CoralStar, WaveLine } from "../../components/editorial/EditorialMarks";
 import {
@@ -26,6 +28,15 @@ export default function WorkspaceHomePage() {
   const { user, isConfigured, signOut } = useAuth();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [decisionLogs, setDecisionLogs] = useState<VoyageDecisionLog[]>([]);
+
+  useEffect(() => {
+    async function loadLogs() {
+      const logs = await getDecisionLogs();
+      setDecisionLogs(logs);
+    }
+    loadLogs();
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -264,22 +275,111 @@ export default function WorkspaceHomePage() {
         {/* RECENT ACTIVITY & AUDIT SECTION */}
         <section className="space-y-6 pt-10 border-t border-forest/15 dark:border-paper-light/15">
           <div className="flex items-center justify-between">
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-forest dark:text-paper-light">
-              Recent activity
-            </h2>
-            <span className="text-xs text-forest/40 dark:text-paper-light/40 font-mono">
-              AUDIT LOG
+            <div>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-forest dark:text-paper-light">
+                Recent Voyage Decision Logs
+              </h2>
+              <span className="text-xs text-forest/60 dark:text-paper-light/60 font-sans">
+                Deterministic charter evaluations and port entry compliance records
+              </span>
+            </div>
+            <span className="text-xs text-forest/40 dark:text-paper-light/40 font-mono uppercase tracking-wider">
+              OFFICIAL AUDIT TRAIL
             </span>
           </div>
 
-          <div className="py-14 text-center space-y-3 border-t border-dashed border-forest/15 dark:border-paper-light/15 bg-paper-surface/20 dark:bg-paper-dark-surface/10 rounded-lg">
-            <WaveLine className="w-16 h-3 mx-auto opacity-50" />
-            <p className="font-serif text-lg font-bold text-forest/70 dark:text-paper-light/70">
-              Your voyage decisions will appear here.
-            </p>
-            <p className="text-xs text-forest/50 dark:text-paper-light/50 max-w-md mx-auto font-normal">
-              Once you run a voyage assessment, the deterministic charter comparisons, compliance audit notes, and exported briefs will appear here.
-            </p>
+          <div className="overflow-x-auto rounded-lg border border-forest/15 dark:border-paper-light/15 bg-paper-surface/40 dark:bg-paper-dark-surface/30">
+            <table className="w-full text-left text-xs font-sans">
+              <thead className="bg-forest/5 dark:bg-paper-light/5 border-b border-forest/10 dark:border-paper-light/10 text-[11px] font-mono text-forest/60 dark:text-paper-light/60 uppercase">
+                <tr>
+                  <th className="py-3 px-4">Voyage / Cargo</th>
+                  <th className="py-3 px-4">Destination Port</th>
+                  <th className="py-3 px-4">Recommended Vessel</th>
+                  <th className="py-3 px-4">Risk-Adjusted Saving</th>
+                  <th className="py-3 px-4">CO₂ Saving</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-forest/10 dark:divide-paper-light/10">
+                {decisionLogs.length > 0 ? (
+                  decisionLogs.slice(0, 5).map((log, idx) => (
+                    <tr key={log.id || idx} className="hover:bg-forest/5 dark:hover:bg-paper-light/5 transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-forest dark:text-paper-light">
+                        <div>{log.cargo_tonnage.toLocaleString()} MT {log.cargo_type}</div>
+                        <div className="text-[10px] font-mono text-forest/50 dark:text-paper-light/50 mt-0.5">
+                          {log.origin} ➔ {log.destination}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-medium text-forest/80 dark:text-paper-light/80">
+                        {log.destination}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-forest dark:text-paper-light flex items-center gap-1.5 pt-4">
+                        <Ship className="w-3.5 h-3.5 text-coral shrink-0" />
+                        <span>{log.recommended_vessel}</span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        +${log.risk_adjusted_saving_usd.toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-forest/70 dark:text-paper-light/70">
+                        {log.co2_saving_mt} MT
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-mono text-[10px] font-bold uppercase">
+                          {log.status || "APPROVED"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Link
+                          href="/workspace/reports"
+                          className="text-coral hover:underline font-bold text-[11px] inline-flex items-center gap-1"
+                        >
+                          <span>Brief</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  /* Captain Arun Sharma Benchmark Voyage default row */
+                  <tr className="hover:bg-forest/5 dark:hover:bg-paper-light/5 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-forest dark:text-paper-light">
+                      <div>75,000 MT Thermal Coal</div>
+                      <div className="text-[10px] font-mono text-forest/50 dark:text-paper-light/50 mt-0.5">
+                        Singapore (SGSIN) ➔ Paradip (INPBD)
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono font-medium text-forest/80 dark:text-paper-light/80">
+                      Paradip Port (INPBD)
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-forest dark:text-paper-light flex items-center gap-1.5 pt-4">
+                      <Ship className="w-3.5 h-3.5 text-coral shrink-0" />
+                      <span>MV Nilgiri Wave</span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      +$142,000
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-forest/70 dark:text-paper-light/70">
+                      114.0 MT
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-mono text-[10px] font-bold uppercase">
+                        APPROVED
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <Link
+                        href="/workspace/reports"
+                        className="text-coral hover:underline font-bold text-[11px] inline-flex items-center gap-1"
+                      >
+                        <span>View Brief</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
       </main>

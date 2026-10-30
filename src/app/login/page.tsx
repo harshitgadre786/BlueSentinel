@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import ThemeToggle from "../../components/ThemeToggle";
 import VesselIllustration from "../../components/editorial/VesselIllustration";
 import { CoralStar } from "../../components/editorial/EditorialMarks";
+import LegalModal from "../../components/LegalModal";
 import {
   Compass,
   ArrowRight,
@@ -26,6 +27,7 @@ const COUNTRY_CODES = [
 ];
 
 export default function LoginPage() {
+  const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
   const router = useRouter();
   const {
     user,
@@ -501,15 +503,28 @@ export default function LoginPage() {
             {/* Small Legal Disclaimer */}
             <p className="text-[11px] text-center text-forest/50 dark:text-paper-light/50 leading-relaxed font-sans pt-4 border-t border-forest/15 dark:border-paper-light/15">
               By continuing, you agree to the{" "}
-              <Link href="#terms" className="underline hover:text-coral">
+              <button
+                type="button"
+                onClick={() => setLegalModal("terms")}
+                className="underline hover:text-coral cursor-pointer"
+              >
                 Terms of Service
-              </Link>{" "}
+              </button>{" "}
               and{" "}
-              <Link href="#privacy" className="underline hover:text-coral">
+              <button
+                type="button"
+                onClick={() => setLegalModal("privacy")}
+                className="underline hover:text-coral cursor-pointer"
+              >
                 Privacy Policy
-              </Link>
+              </button>
               .
             </p>
+            <LegalModal
+              isOpen={legalModal !== null}
+              type={legalModal}
+              onClose={() => setLegalModal(null)}
+            />
           </div>
         </section>
       </main>
