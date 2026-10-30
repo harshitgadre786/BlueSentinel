@@ -8,6 +8,21 @@ import {
   CargoProfile,
   CargoCategory,
 } from "./maritime-models";
+import {
+  INDIAN_MAJOR_PORTS,
+  MajorPort,
+  getMajorPort,
+  validateTerminalCargoCompatibility,
+  normalizeCargoCategory,
+} from "@/data/ports";
+
+export {
+  INDIAN_MAJOR_PORTS,
+  getMajorPort,
+  validateTerminalCargoCompatibility,
+  normalizeCargoCategory,
+};
+export type { MajorPort };
 
 // ============================================================================
 // 1. RICH REALISTIC CARGO PROFILES (UN Numbers, IMDG Classes, VGM Certifications)
@@ -503,11 +518,12 @@ export function getVesselsForCargo(cargoInput: string): DemoVessel[] {
 }
 
 // ============================================================================
-// 4. THREE DETAILED INDIAN PORTS
+// 4. ALL 12 MAJOR PORTS OF INDIA (13 STATUTORY TERMINALS) & DETAILED RULES
 // ============================================================================
 export const DETAILED_INDIAN_PORTS: Record<string, DetailedPortRule> = {
-  paradip: {
-    id: "paradip",
+  // --- EAST COAST ---
+  "in-paradip": {
+    id: "in-paradip",
     name: "Paradip Port",
     country: "India (Odisha Coast)",
     lat: 20.2644,
@@ -519,7 +535,7 @@ export const DETAILED_INDIAN_PORTS: Record<string, DetailedPortRule> = {
     fairwayLimitM: 14.50,
     dailyDemurrageRate: 22000,
     lighteringCostPerTonne: 9.50,
-    description: "Major deepwater iron ore and coal gateway; strict static and dynamic draft limits enforced at Berth 4 & Mechanized Berths.",
+    description: "Deep-water Mechanized Bulk & SPM Oil Berth. SOLAS Reg. VI/2, IMSBC Group B (Thermal Coal & MHB), BLU Code.",
     activeRiskZones: ["zone_paradip_fairway", "zone_bay_monsoon"],
     tidalWindows: [
       { state: "NEAP", heightM: 0.80, description: "Low tidal window; restricted to shallow draft <= 13.5m" },
@@ -532,11 +548,204 @@ export const DETAILED_INDIAN_PORTS: Record<string, DetailedPortRule> = {
       { code: "DOC_DG_ENV", name: "DG Shipping Marine Conservation Notice Compliance", authority: "DG Shipping India", mandatory: true },
       { code: "DOC_GAS", name: "Coal Gas Free / Inert Gas Safety Certificate", authority: "Paradip Port Safety Inspectorate", mandatory: false },
     ],
-    consequenceOfDraftBreach: "Entry refused at Sandheads Pilot Boarding ground. Compulsory offshore lightering at Paradip Offshore Anchorage (POA) incurring $9.50/MT plus $35,000 barge mobilization and 3 to 5 days tidal delay.",
-    suggestedAction: "Select Vessel B (loaded draft 13.3m) for immediate fairway pilotage, or schedule mandatory offshore lightering before charter commitment.",
+    consequenceOfDraftBreach: "Entry refused at Sandheads Pilot Boarding ground. Compulsory offshore lightering at Paradip Offshore Anchorage (POA) incurring $9.50/MT plus $35,000 barge mobilization and 3.5 to 5 days tidal delay.",
+    suggestedAction: "Select compliant chartered vessel (draft <= 14.50m) for immediate fairway pilotage, or schedule mandatory offshore lightering before charter commitment.",
   },
-  kandla: {
-    id: "kandla",
+  "in-visakhapatnam": {
+    id: "in-visakhapatnam",
+    name: "Visakhapatnam Port",
+    country: "India (Andhra Pradesh Coast)",
+    lat: 17.6868,
+    lng: 83.2185,
+    maxPermissibleDraft: 18.10,
+    tidalAllowance: 1.40,
+    requiredUKC: 1.20,
+    fairwayDraftLimit: 18.10,
+    fairwayLimitM: 18.10,
+    dailyDemurrageRate: 24000,
+    lighteringCostPerTonne: 9.00,
+    description: "Deep Natural Outer Harbour & VCTPL Container Terminal. SOLAS Ch. XII Bulk Safety, Outer Harbour Capesize Clearance.",
+    activeRiskZones: ["zone_vizag_outer_harbour"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 0.90, description: "Inner harbour neap tide constraint (max draft 14.5m)" },
+      { state: "NORMAL", heightM: 1.40, description: "Outer harbour all-weather deep approach" },
+      { state: "SPRING", heightM: 2.10, description: "High-slack water window for 200k DWT Capesize berthing" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_LLD", name: "Laden Loadline & Trim Declaration", authority: "Vizag Harbor Master", mandatory: true },
+      { code: "DOC_CDG", name: "Customs EDI Entry Declaration", authority: "Indian Customs", mandatory: true },
+      { code: "DOC_CAPESIZE", name: "Deep Draft Capesize Mooring Warranty", authority: "VCTPL Marine Dept", mandatory: false },
+    ],
+    consequenceOfDraftBreach: "Draft advisory applied to inner docks; outer deepwater terminal accommodates up to 18.1m draft.",
+    suggestedAction: "Prime alternative for deep-draft iron ore, coking coal, and container transshipment.",
+  },
+  "in-kamarajar": {
+    id: "in-kamarajar",
+    name: "Kamarajar Port (Ennore)",
+    country: "India (Tamil Nadu Coast)",
+    lat: 13.2500,
+    lng: 80.3333,
+    maxPermissibleDraft: 16.00,
+    tidalAllowance: 1.10,
+    requiredUKC: 1.20,
+    fairwayDraftLimit: 16.00,
+    fairwayLimitM: 16.00,
+    dailyDemurrageRate: 21000,
+    lighteringCostPerTonne: 10.00,
+    description: "Dedicated Mechanized Bulk & Car Carrier Terminal. SOLAS VI/VII, BLU Code Safe Loading, IGC Code LNG Safeguards.",
+    activeRiskZones: ["zone_ennore_approaches"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 0.70, description: "Standard approach window" },
+      { state: "NORMAL", heightM: 1.10, description: "Safe operational window for Cape/Panamax bulkers" },
+      { state: "SPRING", heightM: 1.60, description: "Full draft clearance window" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_TANGEDCO", name: "Thermal Coal Supply Manifest", authority: "TANGEDCO Marine Cell", mandatory: true },
+      { code: "DOC_CDG", name: "Indian Customs Port Entry Declaration", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Held at Ennore Roads anchorage until draft adjusted or high spring tide window.",
+    suggestedAction: "Recommended recipient port for thermal coal and automotive Ro-Ro exports.",
+  },
+  "in-chennai": {
+    id: "in-chennai",
+    name: "Chennai Port",
+    country: "India (Tamil Nadu Coast)",
+    lat: 13.0827,
+    lng: 80.2707,
+    maxPermissibleDraft: 15.50,
+    tidalAllowance: 1.00,
+    requiredUKC: 1.10,
+    fairwayDraftLimit: 15.50,
+    fairwayLimitM: 15.50,
+    dailyDemurrageRate: 23000,
+    lighteringCostPerTonne: 10.50,
+    description: "All-Weather Artificial Container & Ro-Ro Harbour. NGT Environmental Mandate prohibits dirty dry bulk handling.",
+    activeRiskZones: ["zone_coromandel_swell"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 0.60, description: "Low tide basin transit" },
+      { state: "NORMAL", heightM: 1.00, description: "Normal all-weather container gate operations" },
+      { state: "SPRING", heightM: 1.50, description: "Spring tide window for 305m+ container vessels" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_SOLAS_VGM", name: "SOLAS Verified Gross Mass Certificate", authority: "Chennai Port Authority", mandatory: true },
+      { code: "DOC_CDG", name: "Customs Out-turn & Bill of Entry", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Vessel held at outer roads. Dirty solid bulk (coal/ore) rejected by statutory environmental injunction.",
+    suggestedAction: "Deploy exclusively for containerized, breakbulk, and Ro-Ro vehicle export cargo.",
+  },
+  "in-voc": {
+    id: "in-voc",
+    name: "V.O. Chidambaranar Port (Tuticorin)",
+    country: "India (Tamil Nadu Coast)",
+    lat: 8.7642,
+    lng: 78.1348,
+    maxPermissibleDraft: 14.20,
+    tidalAllowance: 0.90,
+    requiredUKC: 1.20,
+    fairwayDraftLimit: 14.20,
+    fairwayLimitM: 14.20,
+    dailyDemurrageRate: 19500,
+    lighteringCostPerTonne: 9.80,
+    description: "Artificial Deep-Sea Coal & Container Basin. IMO BLU Code, Under Keel Clearance (UKC) 1.2m Mandatory.",
+    activeRiskZones: ["zone_gulf_of_mannar"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 0.50, description: "Restricted tidal window" },
+      { state: "NORMAL", heightM: 0.90, description: "Standard entrance channel transit" },
+      { state: "SPRING", heightM: 1.30, description: "Maximum deep entrance window" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_LLD", name: "Trim & Stability Sheet", authority: "VOC Port Harbor Master", mandatory: true },
+      { code: "DOC_CDG", name: "Customs Entry Declaration", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Vessel held outside breakwater; lightering at Tuticorin roads.",
+    suggestedAction: "Authorized for dry bulk thermal coal and feeder/intermodal containerized shipments.",
+  },
+  "in-smp-haldia": {
+    id: "in-smp-haldia",
+    name: "Syama Prasad Mookerjee Port (Haldia Dock)",
+    country: "India (West Bengal Coast)",
+    lat: 22.0667,
+    lng: 88.0667,
+    maxPermissibleDraft: 10.50,
+    tidalAllowance: 2.50,
+    requiredUKC: 1.50,
+    fairwayDraftLimit: 10.50,
+    fairwayLimitM: 10.50,
+    dailyDemurrageRate: 20000,
+    lighteringCostPerTonne: 11.50,
+    description: "Impounded Wet Dock River Basin. Riverine Tide Bulletin Navigation, Daily Pilotage UKC Directive.",
+    activeRiskZones: ["zone_hooghly_bars", "zone_sandheads"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 1.50, description: "Draft restricted to <= 8.5m" },
+      { state: "NORMAL", heightM: 2.50, description: "Normal high-water bar transit" },
+      { state: "SPRING", heightM: 3.80, description: "High-water spring tide bar crossing window" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_RIVER_DRAFT", name: "Hooghly Daily River Draft Certificate", authority: "Kolkata Marine Department", mandatory: true },
+      { code: "DOC_CDG", name: "Customs Bill of Entry", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Grounded at Sandheads or refused river transit over Auckland bar.",
+    suggestedAction: "Lighter to 10.5m draft at Sandheads or Paradip before river entry.",
+  },
+  "in-smp-kolkata": {
+    id: "in-smp-kolkata",
+    name: "Syama Prasad Mookerjee Port (Kolkata Dock)",
+    country: "India (West Bengal Coast)",
+    lat: 22.5726,
+    lng: 88.3639,
+    maxPermissibleDraft: 8.00,
+    tidalAllowance: 2.80,
+    requiredUKC: 1.50,
+    fairwayDraftLimit: 8.00,
+    fairwayLimitM: 8.00,
+    dailyDemurrageRate: 18000,
+    lighteringCostPerTonne: 13.00,
+    description: "Riverine Tidal Lock Basins (Netaji Subhash / Kidderpore Docks). Hooghly River Navigation Act & IMO Shallow Water Squat Rules.",
+    activeRiskZones: ["zone_hooghly_riverine"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 1.80, description: "Extreme low draft transit <= 6.5m" },
+      { state: "NORMAL", heightM: 2.80, description: "Standard lock entry window" },
+      { state: "SPRING", heightM: 4.20, description: "Bore tide advisory; strict lock master instructions" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_LOCK_PASS", name: "Lock Basin Entry Permit", authority: "SMP Port River Pilotage", mandatory: true },
+      { code: "DOC_CDG", name: "Transit Customs Manifest (Nepal/Bhutan)", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Vessel draft exceeds riverine canal depth. Mandatory redirection to Haldia or Paradip.",
+    suggestedAction: "Restricted strictly to containerized feeders and light breakbulk cargo.",
+  },
+
+  // --- WEST COAST ---
+  "in-jnpa": {
+    id: "in-jnpa",
+    name: "Jawaharlal Nehru Port (JNPA / Nhava Sheva)",
+    country: "India (Maharashtra Coast)",
+    lat: 18.9499,
+    lng: 72.9515,
+    maxPermissibleDraft: 15.00,
+    tidalAllowance: 1.80,
+    requiredUKC: 1.30,
+    fairwayDraftLimit: 15.00,
+    fairwayLimitM: 15.00,
+    dailyDemurrageRate: 25000,
+    lighteringCostPerTonne: 12.00,
+    description: "High-Throughput Deepwater Container Gateway. SOLAS Reg. VI/2 VGM Method 1 & 2 Electronic Weighbridge Mandate.",
+    activeRiskZones: ["zone_arabian_sea_monsoon", "zone_mumbai_tss"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 1.00, description: "Normal channel maneuvering" },
+      { state: "NORMAL", heightM: 1.80, description: "Standard container gateway window" },
+      { state: "SPRING", heightM: 2.60, description: "Maximum depth window for Ultra Large Container Vessels" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_JNPT_TSS", name: "Traffic Separation Scheme Navigation Plan", authority: "Mumbai VTS", mandatory: true },
+      { code: "DOC_CDG", name: "Indian Customs EDI Clearance Notification", authority: "Indian Customs", mandatory: true },
+      { code: "DOC_EHS", name: "Port Environmental Health & Ballast Water Certificate", authority: "Port Health Officer (PHO)", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Vessel pushed to outer anchorages off Prongs Reef. Open dry bulk coal is rejected due to lack of bulk handling infrastructure.",
+    suggestedAction: "India's premier terminal for containerized freight and liquid chemicals.",
+  },
+  "in-deendayal": {
+    id: "in-deendayal",
     name: "Deendayal Port (Kandla)",
     country: "India (Gujarat Coast)",
     lat: 23.0033,
@@ -548,7 +757,7 @@ export const DETAILED_INDIAN_PORTS: Record<string, DetailedPortRule> = {
     fairwayLimitM: 13.80,
     dailyDemurrageRate: 20000,
     lighteringCostPerTonne: 11.00,
-    description: "Gulf of Kutch hub characterized by strong tidal currents (up to 4.5 knots) and shifting siltation sandbanks between fairway and Tuna Buoy.",
+    description: "Tidal Oil Jetties & Dry Cargo Berths (Kandla & Vadinar). Gulf of Kutch Tidal Passage Window & MARPOL Annex I POL Protocol.",
     activeRiskZones: ["zone_kutch_siltation"],
     tidalWindows: [
       { state: "NEAP", heightM: 1.20, description: "Extreme current with restricted draft slot" },
@@ -560,38 +769,136 @@ export const DETAILED_INDIAN_PORTS: Record<string, DetailedPortRule> = {
       { code: "DOC_CDG", name: "Indian Customs Port Out-turn Declaration", authority: "Indian Customs", mandatory: true },
       { code: "DOC_P&I", name: "P&I Club Local Grounding & Salvage Coverage Warranty", authority: "Directorate General of Shipping", mandatory: true },
     ],
-    consequenceOfDraftBreach: "Vessel held at Tuna anchorage. Subject to severe tidal stranding risk on sandbars and mandatory high-water slot allocation.",
-    suggestedAction: "Strictly deploy vessels with loaded draft <= 13.0m or arrange transshipment at Vadinar / outer deep anchorage.",
+    consequenceOfDraftBreach: "Vessel held at Tuna anchorage. Severe tidal stranding risk on sandbars and mandatory high-water slot allocation.",
+    suggestedAction: "Major hub for crude oil, edible oil, dry bulk grains, and fertilizers.",
   },
-  jnpt: {
-    id: "jnpt",
-    name: "Jawaharlal Nehru Port (JNPT)",
+  "in-mumbai": {
+    id: "in-mumbai",
+    name: "Mumbai Port",
     country: "India (Maharashtra Coast)",
-    lat: 18.9499,
-    lng: 72.9515,
-    maxPermissibleDraft: 14.50,
+    lat: 18.9438,
+    lng: 72.8387,
+    maxPermissibleDraft: 11.00,
     tidalAllowance: 1.80,
-    requiredUKC: 1.30,
-    fairwayDraftLimit: 14.80,
-    fairwayLimitM: 14.80,
-    dailyDemurrageRate: 25000,
+    requiredUKC: 1.20,
+    fairwayDraftLimit: 11.00,
+    fairwayLimitM: 11.00,
+    dailyDemurrageRate: 22000,
     lighteringCostPerTonne: 12.00,
-    description: "Premier container and bulk gateway on west coast near Mumbai; heavy traffic separation scheme.",
-    activeRiskZones: ["zone_arabian_sea_monsoon"],
+    description: "Historic Deep Natural Harbour & Offshore Jetties. Open dusty dry bulk handling prohibited due to urban environmental regulations.",
+    activeRiskZones: ["zone_mumbai_harbour"],
     tidalWindows: [
-      { state: "NEAP", heightM: 1.00, description: "Normal channel maneuvering" },
-      { state: "NORMAL", heightM: 1.80, description: "Standard container & bulk channel access" },
-      { state: "SPRING", heightM: 2.60, description: "Maximum depth window for 14.5m vessels" },
+      { state: "NEAP", heightM: 1.00, description: "Approach fairway navigation" },
+      { state: "NORMAL", heightM: 1.80, description: "Standard Jawahar Dweep / Indira Dock transit" },
+      { state: "SPRING", heightM: 2.60, description: "Maximum draft entry window" },
     ],
     requiredDocuments: [
-      { code: "DOC_JNPT_TSS", name: "Traffic Separation Scheme Navigation Plan", authority: "Mumbai VTS", mandatory: true },
-      { code: "DOC_CDG", name: "Indian Customs EDI Clearance Notification", authority: "Indian Customs", mandatory: true },
-      { code: "DOC_EHS", name: "Port Environmental Health & Ballast Water Certificate", authority: "Port Health Officer (PHO)", mandatory: true },
+      { code: "DOC_VTS", name: "Mumbai Harbour VTS Clearance", authority: "Mumbai Port Authority", mandatory: true },
+      { code: "DOC_CDG", name: "Customs Bill of Entry", authority: "Indian Customs", mandatory: true },
     ],
-    consequenceOfDraftBreach: "Vessel pushed to outer anchorages off Prongs Reef, incurring prime Mumbai anchorage tariff and priority berth displacement.",
-    suggestedAction: "Comply with channel navigation window and verify 1.3m UKC with dynamic swell cushion.",
+    consequenceOfDraftBreach: "Held at inner anchorage off Apollo Bandar. Dirty bulk coal/ore rejected.",
+    suggestedAction: "Authorized for crude oil, chemicals, vehicles (Ro-Ro), and heavy machinery.",
+  },
+  "in-mormugao": {
+    id: "in-mormugao",
+    name: "Mormugao Port",
+    country: "India (Goa Coast)",
+    lat: 15.4167,
+    lng: 73.8000,
+    maxPermissibleDraft: 14.10,
+    tidalAllowance: 1.30,
+    requiredUKC: 1.20,
+    fairwayDraftLimit: 14.10,
+    fairwayLimitM: 14.10,
+    dailyDemurrageRate: 21000,
+    lighteringCostPerTonne: 10.00,
+    description: "Zuari River Deep Water Bulk Cargo Berths. IMSBC Code Group A Liquefaction Safety & Moisture Limit Rules.",
+    activeRiskZones: ["zone_goa_monsoon"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 0.80, description: "Low tide berth maneuvering" },
+      { state: "NORMAL", heightM: 1.30, description: "Standard bulk carrier arrival window" },
+      { state: "SPRING", heightM: 1.90, description: "High spring water window for laden Panamax" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_TML", name: "Transportable Moisture Limit (TML) Certificate", authority: "Mormugao Port Chemist", mandatory: true },
+      { code: "DOC_CDG", name: "Indian Customs Port Clearance", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Held at Aguada anchorage. Commercial container freight not handled.",
+    suggestedAction: "Premier hub for iron ore fines, pellets, and metallurgical coal.",
+  },
+  "in-new-mangalore": {
+    id: "in-new-mangalore",
+    name: "New Mangalore Port",
+    country: "India (Karnataka Coast)",
+    lat: 12.9298,
+    lng: 74.8144,
+    maxPermissibleDraft: 14.00,
+    tidalAllowance: 1.20,
+    requiredUKC: 1.20,
+    fairwayDraftLimit: 14.00,
+    fairwayLimitM: 14.00,
+    dailyDemurrageRate: 20500,
+    lighteringCostPerTonne: 10.20,
+    description: "Deep All-Weather Lagoon Harbour. MARPOL Annex I/II, ISGOTT Liquid Discharge Standards.",
+    activeRiskZones: ["zone_karnataka_coast"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 0.70, description: "Restricted entrance navigation" },
+      { state: "NORMAL", heightM: 1.20, description: "Standard lagoon harbour entry" },
+      { state: "SPRING", heightM: 1.70, description: "Spring tide entry for deep-laden tankers" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_ISGOTT", name: "ISGOTT Tanker Safety Checklist", authority: "NMPA Marine Division", mandatory: true },
+      { code: "DOC_CDG", name: "Customs Entry Declaration", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Held outside breakwater at fairway buoy.",
+    suggestedAction: "Serves crude oil (MRPL), LPG, coal, and iron ore pellet traffic.",
+  },
+  "in-cochin": {
+    id: "in-cochin",
+    name: "Cochin Port (Kochi)",
+    country: "India (Kerala Coast)",
+    lat: 9.9667,
+    lng: 76.2667,
+    maxPermissibleDraft: 14.50,
+    tidalAllowance: 1.00,
+    requiredUKC: 1.20,
+    fairwayDraftLimit: 14.50,
+    fairwayLimitM: 14.50,
+    dailyDemurrageRate: 23500,
+    lighteringCostPerTonne: 11.00,
+    description: "ICTT Vallarpadam Transshipment Terminal. SOLAS Ch. VII, IGC Code Cryogenic Gas Handling Rules.",
+    activeRiskZones: ["zone_cochin_fairway"],
+    tidalWindows: [
+      { state: "NEAP", heightM: 0.60, description: "Approach fairway constraint" },
+      { state: "NORMAL", heightM: 1.00, description: "Standard ICTT container transit window" },
+      { state: "SPRING", heightM: 1.50, description: "Maximum draft slot for mainline container vessels" },
+    ],
+    requiredDocuments: [
+      { code: "DOC_ICTT_BERTH", name: "Vallarpadam Terminal Berthing Plan", authority: "Cochin Harbor Master", mandatory: true },
+      { code: "DOC_CDG", name: "Indian Customs EDI Filing", authority: "Indian Customs", mandatory: true },
+    ],
+    consequenceOfDraftBreach: "Held at Cochin outer fairway buoy. Dirty solid bulk must route to Tuticorin or New Mangalore.",
+    suggestedAction: "Optimized for mainline container transshipment, LNG, and marine bunkering.",
   },
 };
+
+// Aliases for backward compatibility
+DETAILED_INDIAN_PORTS.paradip = DETAILED_INDIAN_PORTS["in-paradip"];
+DETAILED_INDIAN_PORTS.kandla = DETAILED_INDIAN_PORTS["in-deendayal"];
+DETAILED_INDIAN_PORTS.jnpt = DETAILED_INDIAN_PORTS["in-jnpa"];
+DETAILED_INDIAN_PORTS["in-kandla"] = DETAILED_INDIAN_PORTS["in-deendayal"];
+DETAILED_INDIAN_PORTS["in-jnpt"] = DETAILED_INDIAN_PORTS["in-jnpa"];
+
+/**
+ * Universal port rule resolver that handles new IDs ("in-paradip"), legacy IDs ("paradip"), and UN/LOCODEs ("INPRT")
+ */
+export function getPortRule(portIdOrCode: string): DetailedPortRule {
+  const clean = (portIdOrCode || "").toLowerCase().trim();
+  if (DETAILED_INDIAN_PORTS[clean]) return DETAILED_INDIAN_PORTS[clean];
+  const major = getMajorPort(clean);
+  if (major && DETAILED_INDIAN_PORTS[major.id]) return DETAILED_INDIAN_PORTS[major.id];
+  return DETAILED_INDIAN_PORTS["in-paradip"] || DETAILED_INDIAN_PORTS.paradip;
+}
 
 // Nautical Distance Matrix (in Nautical Miles)
 export const VOYAGE_DISTANCES_NM: Record<string, Record<string, number>> = {
@@ -622,6 +929,21 @@ export function calculateAcousticNoiseDB(speedKnots: number): number {
   return Number(baseDB.toFixed(1));
 }
 
+export function getVoyageDistance(originId: string, destinationPortId: string): number {
+  if (VOYAGE_DISTANCES_NM[originId]?.[destinationPortId]) {
+    return VOYAGE_DISTANCES_NM[originId][destinationPortId];
+  }
+  const major = getMajorPort(destinationPortId);
+  if (major) {
+    if (originId === "singapore") return major.distanceFromSingaporeNM;
+    if (originId === "port_hedland") return Math.round(major.distanceFromSingaporeNM + 2030);
+    if (originId === "richards_bay") return major.coast === "West Coast" ? 4350 : 4850;
+    if (originId === "ras_laffan") return major.coast === "West Coast" ? 1350 : 2550;
+    return major.distanceFromSingaporeNM;
+  }
+  return 1650;
+}
+
 /**
  * Master Deterministic Voyage Calculation for a Single Vessel
  */
@@ -630,7 +952,7 @@ export function evaluateVesselForVoyage(
   inputs: VoyagePlannerInputs,
   port: DetailedPortRule
 ): VesselEvaluationResult {
-  const distanceNM = VOYAGE_DISTANCES_NM[inputs.originPortId]?.[inputs.destinationPortId] || 1650;
+  const distanceNM = getVoyageDistance(inputs.originPortId, inputs.destinationPortId);
   const speed = vessel.averageSpeed;
   const squat = calculateDynamicSquat(speed);
   const dynamicArrivalDraft = Number((vessel.loadedDraft + squat).toFixed(2));
@@ -800,7 +1122,7 @@ export function evaluateVesselForVoyage(
  * Compare candidate vessels and formulate executive recommendation
  */
 export function compareThreeVessels(inputs: VoyagePlannerInputs): MultiVesselComparison {
-  const port = DETAILED_INDIAN_PORTS[inputs.destinationPortId] || DETAILED_INDIAN_PORTS.paradip;
+  const port = getPortRule(inputs.destinationPortId);
 
   // Retrieve candidate vessels for the selected cargo
   const eligibleVessels = getVesselsForCargo(inputs.cargoType);

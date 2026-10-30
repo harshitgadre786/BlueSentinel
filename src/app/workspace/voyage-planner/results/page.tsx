@@ -86,7 +86,7 @@ export default function VoyagePlannerResultsPage() {
               <span>Modify Voyage Inputs</span>
             </Link>
             <span className="text-xs font-mono text-forest/60 dark:text-paper-light/60 uppercase tracking-wider">
-              DETERMINISTIC EVALUATION • PARADIP CALL
+              DETERMINISTIC EVALUATION • {port.name.toUpperCase()} CALL
             </span>
           </div>
 

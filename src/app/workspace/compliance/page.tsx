@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import WorkspaceNav from "@/components/WorkspaceNav";
-import { DETAILED_INDIAN_PORTS, DEMO_VESSELS, calculateDynamicSquat } from "@/lib/maritime-calculator";
+import { DETAILED_INDIAN_PORTS, DEMO_VESSELS, calculateDynamicSquat, getPortRule } from "@/lib/maritime-calculator";
+import { INDIAN_MAJOR_PORTS } from "@/data/ports";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 
 export default function PortCompliancePage() {
-  const [selectedPortId, setSelectedPortId] = useState<string>("paradip");
+  const [selectedPortId, setSelectedPortId] = useState<string>("in-paradip");
   const [selectedVesselId, setSelectedVesselId] = useState<string>("vesselA");
   const [selectedTideState, setSelectedTideState] = useState<"NEAP" | "NORMAL" | "SPRING">("NORMAL");
   const [checkedDocs, setCheckedDocs] = useState<Record<string, boolean>>({
@@ -27,7 +28,7 @@ export default function PortCompliancePage() {
     DOC_CDG: true,
   });
 
-  const port = DETAILED_INDIAN_PORTS[selectedPortId] || DETAILED_INDIAN_PORTS.paradip;
+  const port = getPortRule(selectedPortId);
   const vessel = DEMO_VESSELS[selectedVesselId] || DEMO_VESSELS.vesselA;
 
   // Dynamic calculations
@@ -89,11 +90,20 @@ export default function PortCompliancePage() {
               onChange={(e) => setSelectedPortId(e.target.value)}
               className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none cursor-pointer font-bold"
             >
-              {Object.values(DETAILED_INDIAN_PORTS).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.country})
-                </option>
-              ))}
+              <optgroup label="East Coast (Bay of Bengal)">
+                {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "East Coast").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="West Coast (Arabian Sea)">
+                {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "West Coast").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 

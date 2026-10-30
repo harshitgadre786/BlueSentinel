@@ -9,7 +9,14 @@ import {
   CARGO_PROFILES,
   CHARTERED_FLEET,
   getVesselsForCargo,
+  getPortRule,
+  getVoyageDistance,
 } from "@/lib/maritime-calculator";
+import {
+  INDIAN_MAJOR_PORTS,
+  getMajorPort,
+  validateTerminalCargoCompatibility,
+} from "@/data/ports";
 import {
   Ship,
   Anchor,
@@ -39,7 +46,7 @@ export default function VoyagePlannerPage() {
     cargoCategory: "DRY_BULK",
     cargoQuantityMT: 75000,
     originPortId: "singapore",
-    destinationPortId: "paradip",
+    destinationPortId: "in-paradip",
     laycanDate: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10),
     fuelPriceUSD: 640,
     usdToInrRate: 83.50,
@@ -81,7 +88,9 @@ export default function VoyagePlannerPage() {
     }
   }, [inputs.cargoType, inputs.selectedVesselId]);
 
-  const selectedPort = DETAILED_INDIAN_PORTS[inputs.destinationPortId] || DETAILED_INDIAN_PORTS.paradip;
+  const selectedMajorPort = getMajorPort(inputs.destinationPortId) || INDIAN_MAJOR_PORTS[0];
+  const selectedPort = getPortRule(inputs.destinationPortId);
+  const compatibility = validateTerminalCargoCompatibility(inputs.destinationPortId, inputs.cargoType);
 
   // Handle Cargo Selection change with auto-parameters
   const handleCargoTypeChange = (selectedName: string) => {
@@ -241,10 +250,18 @@ export default function VoyagePlannerPage() {
                   onChange={(e) => setInputs({ ...inputs, originPortId: e.target.value })}
                   className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-medium"
                 >
-                  <option value="singapore">Port of Singapore (1,650 NM to Paradip)</option>
-                  <option value="port_hedland">Port Hedland, Australia (3,680 NM)</option>
-                  <option value="richards_bay">Richards Bay, South Africa (4,850 NM)</option>
-                  <option value="ras_laffan">Ras Laffan, Qatar (2,580 NM)</option>
+                  <option value="singapore">
+                    Port of Singapore ({getVoyageDistance("singapore", inputs.destinationPortId).toLocaleString()} NM to {selectedMajorPort?.name || "Destination"})
+                  </option>
+                  <option value="port_hedland">
+                    Port Hedland, Australia ({getVoyageDistance("port_hedland", inputs.destinationPortId).toLocaleString()} NM)
+                  </option>
+                  <option value="richards_bay">
+                    Richards Bay, South Africa ({getVoyageDistance("richards_bay", inputs.destinationPortId).toLocaleString()} NM)
+                  </option>
+                  <option value="ras_laffan">
+                    Ras Laffan, Qatar ({getVoyageDistance("ras_laffan", inputs.destinationPortId).toLocaleString()} NM)
+                  </option>
                 </select>
               </div>
 
@@ -259,14 +276,90 @@ export default function VoyagePlannerPage() {
                   onChange={(e) => setInputs({ ...inputs, destinationPortId: e.target.value })}
                   className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold"
                 >
-                  {Object.values(DETAILED_INDIAN_PORTS).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} (Max Draft: {p.maxPermissibleDraft}m CD)
-                    </option>
-                  ))}
+                  <optgroup label="East Coast (Bay of Bengal)">
+                    {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "East Coast").map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="West Coast (Arabian Sea)">
+                    {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "West Coast").map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             </div>
+
+            {/* Terminal-Cargo Compatibility Validation */}
+            {!compatibility.isCompatible ? (
+              <div className="mt-4 p-4 rounded-lg bg-coral/10 border-2 border-coral text-forest dark:text-paper-light space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-coral shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-coral text-paper-light">
+                        STATUTORY TERMINAL REJECTION
+                      </span>
+                      <span className="text-xs font-bold text-coral">
+                        {selectedMajorPort?.name} ({selectedMajorPort?.code})
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-forest/90 dark:text-paper-light/90 font-medium leading-relaxed">
+                      {compatibility.rejectionReason}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Authorized Cargo Classes */}
+                <div className="text-xs bg-paper-surface/60 dark:bg-paper-dark-surface/60 p-2.5 rounded border border-forest/10 dark:border-paper-light/10">
+                  <span className="font-bold text-forest/80 dark:text-paper-light/80">Authorized Cargo Classes at {selectedMajorPort?.name}: </span>
+                  <span className="text-forest/70 dark:text-paper-light/70">
+                    {selectedMajorPort?.allowedCargoTypes.join(" • ")}
+                  </span>
+                </div>
+
+                {/* 1-Click Compliant Port Alternatives */}
+                {compatibility.suggestedAlternatives && compatibility.suggestedAlternatives.length > 0 && (
+                  <div className="pt-2 border-t border-coral/20 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-forest/80 dark:text-paper-light/80">
+                      Suggested Compliant Alternative Ports:
+                    </span>
+                    {compatibility.suggestedAlternatives.map((alt) => (
+                      <button
+                        key={alt.id}
+                        type="button"
+                        onClick={() => setInputs((prev) => ({ ...prev, destinationPortId: alt.id }))}
+                        className="px-3 py-1 text-xs font-bold bg-forest text-paper-light dark:bg-paper-light dark:text-forest rounded hover:bg-forest/80 dark:hover:bg-paper-light/80 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <span>Switch to {alt.name} ({alt.code})</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-4 p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-forest/90 dark:text-paper-light/90">
+                    <strong>Terminal Cargo Verified:</strong> {selectedMajorPort?.name} ({selectedMajorPort?.code}) is statutorily cleared for <em>{inputs.cargoType}</em> under {selectedMajorPort?.imoStandard}.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 font-mono text-[11px] text-forest/70 dark:text-paper-light/70">
+                  <span className="px-2 py-0.5 rounded bg-forest/5 dark:bg-paper-light/10 border border-forest/15">
+                    Berth Max Draft: {selectedMajorPort?.maxBerthDraftM}m
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-forest/5 dark:bg-paper-light/10 border border-forest/15">
+                    LOA: {selectedMajorPort?.maxLOAM}m
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Step 2: Commercial & Operational Inputs */}
