@@ -15,7 +15,7 @@ import {
 export const CARGO_PROFILES: Record<string, CargoProfile> = {
   dry_bulk_coal: {
     id: "dry_bulk_coal",
-    name: "Dry Bulk (Coal, Ore, Grain)",
+    name: "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
     category: "DRY_BULK",
     defaultTonnageMT: 75000,
     densityT_M3: 0.85,
@@ -28,7 +28,7 @@ export const CARGO_PROFILES: Record<string, CargoProfile> = {
   },
   container_intermodal: {
     id: "container_intermodal",
-    name: "Container / Intermodal",
+    name: "Containerized Goods",
     category: "CONTAINER",
     defaultTonnageMT: 42000,
     densityT_M3: 0.45,
@@ -116,10 +116,10 @@ export const CARGO_PROFILES: Record<string, CargoProfile> = {
 export const CHARTERED_FLEET: Record<string, DemoVessel> = {
   vesselB: {
     id: "vesselB",
-    name: "MV Nilgiri Wave",
-    type: "Eco Shallow-Draft Wide-Beam Ultramax",
-    dwt: 64500,
-    loadedDraft: 13.30,
+    name: "MV Sentinel Carrier",
+    type: "Supramax Bulk Carrier",
+    dwt: 58000,
+    loadedDraft: 12.80,
     averageSpeed: 13.5,
     dailyFuelBurn: 24.8,
     freightDailyRate: 21500,
@@ -142,10 +142,10 @@ export const CHARTERED_FLEET: Record<string, DemoVessel> = {
   },
   vesselA: {
     id: "vesselA",
-    name: "MV Ocean Titan",
-    type: "Gearless Post-Panamax Bulk Carrier",
+    name: "MV Ocean Pioneer",
+    type: "Panamax Bulk Carrier",
     dwt: 82500,
-    loadedDraft: 14.80,
+    loadedDraft: 15.20,
     averageSpeed: 14.0,
     dailyFuelBurn: 32.2,
     freightDailyRate: 17500,
@@ -420,14 +420,20 @@ export function getVesselsForCargo(cargoInput: string): DemoVessel[] {
 
   const norm = cargoInput.toLowerCase();
 
-  // Container / Intermodal
-  if (norm.includes("container") || norm.includes("intermodal") || norm.includes("teu")) {
+  // Dry Bulk (Thermal Coal / Iron Ore / Grain): Filter to only bulkers (Handymax, Supramax, Panamax, Capesize)
+  if (
+    norm.includes("dry") ||
+    norm.includes("coal") ||
+    norm.includes("ore") ||
+    norm.includes("grain") ||
+    norm.includes("bulker")
+  ) {
     return Object.values(CHARTERED_FLEET).filter((v) =>
-      v.cargoCapabilities.includes("CONTAINER")
+      v.cargoCapabilities.includes("DRY_BULK")
     );
   }
 
-  // Liquid Bulk / Crude / Chemicals
+  // Liquid Bulk / Crude / Chemicals: Show only chemical/oil tankers
   if (
     norm.includes("liquid") ||
     norm.includes("crude") ||
@@ -441,16 +447,16 @@ export function getVesselsForCargo(cargoInput: string): DemoVessel[] {
     );
   }
 
-  // Dry Bulk (Coal, Ore, Grain)
+  // Containerized Goods: Show only container carriers (Feeder, Panamax TEU)
   if (
-    norm.includes("dry") ||
-    norm.includes("bulk") ||
-    norm.includes("coal") ||
-    norm.includes("ore") ||
-    norm.includes("grain") ||
-    norm.includes("bauxite")
+    norm.includes("container") ||
+    norm.includes("intermodal") ||
+    norm.includes("teu") ||
+    norm.includes("goods")
   ) {
-    return [CHARTERED_FLEET.vesselB, CHARTERED_FLEET.vesselA, CHARTERED_FLEET.vesselC];
+    return Object.values(CHARTERED_FLEET).filter((v) =>
+      v.cargoCapabilities.includes("CONTAINER")
+    );
   }
 
   // Hazardous / IMDG Special
@@ -506,7 +512,7 @@ export const DETAILED_INDIAN_PORTS: Record<string, DetailedPortRule> = {
     country: "India (Odisha Coast)",
     lat: 20.2644,
     lng: 86.6853,
-    maxPermissibleDraft: 14.20, // CD
+    maxPermissibleDraft: 14.50, // CD
     tidalAllowance: 1.50, // Average tide
     requiredUKC: 1.20, // Mandatory Under Keel Clearance
     fairwayDraftLimit: 14.50,
@@ -729,7 +735,10 @@ export function evaluateVesselForVoyage(
   const detailedAuditNotes: string[] = [];
 
   if (!isDraftCompliant) {
-    rejectionReason = `Fails Port Draft Limit: Arrival draft with squat is ${dynamicArrivalDraft}m, exceeding ${port.name} allowable threshold of ${allowablePortDraft}m by ${Math.abs(draftMargin)}m.`;
+    const draftExcess = Number((vessel.loadedDraft - port.maxPermissibleDraft).toFixed(2));
+    rejectionReason = draftExcess > 0
+      ? `Exceeds ${port.name} draft limit by ${draftExcess}m.`
+      : `Exceeds ${port.name} allowable dynamic arrival draft limit by ${Math.abs(draftMargin)}m.`;
     detailedAuditNotes.push(
       `Static loaded draft (${vessel.loadedDraft}m) + shallow squat (${squat}m) = dynamic draft ${dynamicArrivalDraft}m.`
     );
@@ -810,7 +819,7 @@ export function compareThreeVessels(inputs: VoyagePlannerInputs): MultiVesselCom
   if (!resA.isDraftCompliant && resB.isDraftCompliant) {
     recommendedVesselId = candB.id;
     const netSaving = resA.costs.riskAdjustedCostUSD - resB.costs.riskAdjustedCostUSD;
-    executiveRationale = `${candB.name} is the verified recommended choice. While ${candA.name} appears $${Math.abs(resA.costs.totalLandedCostUSD - resB.costs.totalLandedCostUSD).toLocaleString()} cheaper on unadjusted base freight, its dynamic draft (${resA.dynamicArrivalDraftM}m) breaches ${port.name}'s maximum permissible channel threshold (${resA.allowablePortDraftM}m). This triggers compulsory offshore lightering ($${resA.costs.lighteringPenaltyUSD.toLocaleString()}) and 3.5 days of tidal delay demurrage. Choosing ${candB.name} saves $${netSaving.toLocaleString()} USD in net risk-adjusted exposure and avoids ${Math.abs(resA.estimatedCO2MT - resB.estimatedCO2MT)} MT of CO2.`;
+    executiveRationale = `${candB.name} is RECOMMENDED (Safe UKC clearance, lowest risk-adjusted voyage cost). While ${candA.name} appears cheaper initially, its draft (${candA.loadedDraft}m) exceeds ${port.name} draft limit (${port.maxPermissibleDraft}m) by ${Number((candA.loadedDraft - port.maxPermissibleDraft).toFixed(2))}m, causing compulsory rejection and offshore lightering. This triggers compulsory offshore lightering ($${resA.costs.lighteringPenaltyUSD.toLocaleString()}) and 3.5 days of tidal delay demurrage. Choosing ${candB.name} saves $${netSaving.toLocaleString()} USD in net risk-adjusted exposure and avoids ${Math.abs(resA.estimatedCO2MT - resB.estimatedCO2MT)} MT of CO2.`;
   } else {
     recommendedVesselId = candB.id;
     executiveRationale = `${candB.name} provides optimal operational safety, lowest environmental impact, and guaranteed direct fairway access without tidal wait penalties.`;

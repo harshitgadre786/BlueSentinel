@@ -1,3 +1,5 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -43,16 +45,7 @@ export default function BlueAIAssistant({
       id: "msg_welcome",
       sender: "blueai",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      content: `Welcome to **BlueSentinel AI Decision Support**. I am **BlueAI**, your verified RAG maritime intelligence officer.
-
-I cross-reference your uploaded **Vessel Specifications** and **${port.name} Marine Circulars** against our **deterministic hydrodynamic calculation engine**.
-
-**Current Voyage Synopsis:**
-* **Indian Port**: ${port.name} (Max permissible draft: **${port.maxPermissibleDraft}m CD**)
-* **Decision Status**: **${verdict.recommendedVesselId === "vesselB" ? resultB.vesselName : resultA.vesselName}** is recommended.
-* **Key Commercial Factor**: Vessel A incurs a critical **${Math.abs(resultA.draftMargin)}m draft breach**, making its true risk-adjusted cost **$${resultA.riskAdjustedCostUSD.toLocaleString()}** vs **$${resultB.riskAdjustedCostUSD.toLocaleString()}** for Vessel B.
-
-Ask me any nautical, regulatory, or commercial question below.`,
+      content: "Welcome to BlueAI Document Copilot. I analyze your uploaded charterparty agreements, vessel specification sheets, and official Indian port notices. Every answer is cross-referenced with exact file names and page citations.",
       citations: [
         {
           filename: "Paradip_Port_Notice_Marine_Circular_2026.pdf",
@@ -174,8 +167,8 @@ Ask me any nautical, regulatory, or commercial question below.`,
               }`}
             >
               {/* Message Content */}
-              <div className="leading-relaxed whitespace-pre-line prose-invert">
-                {msg.content}
+              <div className="prose prose-sm max-w-none text-slate-800 dark:text-slate-200 leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
               </div>
 
               {/* Deterministic Metrics Strip (AI only) */}
@@ -215,7 +208,7 @@ Ask me any nautical, regulatory, or commercial question below.`,
                         </span>
                       </div>
                       <div className="text-slate-400 italic">
-                        "{cite.excerpt}"
+                        &ldquo;{cite.excerpt}&rdquo;
                       </div>
                     </div>
                   ))}

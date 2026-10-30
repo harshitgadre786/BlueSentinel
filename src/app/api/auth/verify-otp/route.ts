@@ -19,9 +19,9 @@ export async function POST(req: NextRequest) {
       const demoUser = {
         id: "usr_captain_" + (sanitizedPhone.replace(/\D/g, "").slice(-4) || "7860"),
         phone: sanitizedPhone,
-        name: "Captain Arun Sharma",
+        name: "Captain Sharma",
         email: "captain.sharma@bluesentinel.maritime",
-        role: "Fleet Superintendent & Nautical Auditor",
+        role: "Master Mariner / Charterer",
         isDemo: true,
       };
 

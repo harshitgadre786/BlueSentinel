@@ -35,7 +35,7 @@ export default function VoyagePlannerPage() {
   const router = useRouter();
 
   const defaultInputs: VoyagePlannerInputs = {
-    cargoType: "Dry Bulk (Coal, Ore, Grain)",
+    cargoType: "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
     cargoCategory: "DRY_BULK",
     cargoQuantityMT: 75000,
     originPortId: "singapore",
@@ -79,7 +79,7 @@ export default function VoyagePlannerPage() {
         permissiblePayloadMT: primary.permissiblePayloadMT || Math.round(primary.dwt * 0.95),
       }));
     }
-  }, [inputs.cargoType]);
+  }, [inputs.cargoType, inputs.selectedVesselId]);
 
   const selectedPort = DETAILED_INDIAN_PORTS[inputs.destinationPortId] || DETAILED_INDIAN_PORTS.paradip;
 
@@ -144,7 +144,7 @@ export default function VoyagePlannerPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-coral">
-              VOYAGE & VESSEL SELECTION • VOYAGE SPECIFICATION
+              VOYAGE SETUP & VESSEL CHARTER • SPECIFICATION
             </span>
             <button
               onClick={handleResetDefaults}
@@ -200,8 +200,8 @@ export default function VoyagePlannerPage() {
                   onChange={(e) => handleCargoTypeChange(e.target.value)}
                   className="w-full bg-paper-light dark:bg-paper-dark border border-forest/20 dark:border-paper-light/20 rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold"
                 >
-                  <option value="Dry Bulk (Coal, Ore, Grain)">Dry Bulk (Coal, Ore, Grain)</option>
-                  <option value="Container / Intermodal">Container / Intermodal (TEU)</option>
+                  <option value="Dry Bulk (Thermal Coal / Iron Ore / Grain)">Dry Bulk (Thermal Coal / Iron Ore / Grain)</option>
+                  <option value="Containerized Goods">Containerized Goods (Feeder, Panamax TEU)</option>
                   <option value="Liquid Bulk / Crude / Chemicals">Liquid Bulk / Crude / Chemicals</option>
                   <option value="Hazardous / IMDG Special">Hazardous / IMDG Special</option>
                   <option value="LNG / Cryogenic Liquefied Gas">LNG / Cryogenic Liquefied Gas</option>

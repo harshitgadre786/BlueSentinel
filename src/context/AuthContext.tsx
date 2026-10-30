@@ -9,6 +9,7 @@ export interface AuthUser {
   email?: string;
   phone?: string;
   name?: string;
+  role?: string;
   avatarUrl?: string;
   isDemo?: boolean;
 }
@@ -112,7 +113,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const demoGoogleUser: AuthUser = {
         id: "demo_google_captain",
         email: "captain.sharma@bluesentinel.internal",
-        name: "Captain Arun Sharma",
+        name: "Captain Sharma",
+        role: "Master Mariner / Charterer",
         isDemo: true,
       };
       setUser(demoGoogleUser);
@@ -185,7 +187,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const demoUser: AuthUser = {
         id: "demo_usr_" + Date.now(),
         phone: phone || "+91 98765 43210",
-        name: "Captain Arun Sharma",
+        name: "Captain Sharma",
+        role: "Master Mariner / Charterer",
         email: "captain.sharma@bluesentinel.maritime",
         isDemo: true,
       };
@@ -220,7 +223,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const newUser: AuthUser = {
             id: data.user.id,
             phone: data.user.phone || phone,
-            name: "Captain " + (phone.slice(-4) || "Sharma"),
+            name: "Captain Sharma",
+            role: "Master Mariner / Charterer",
             email: data.user.email,
           };
           setUser(newUser);
@@ -238,7 +242,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const demoUser: AuthUser = {
             id: "demo_usr_" + Date.now(),
             phone: phone,
-            name: "Captain Arun Sharma",
+            name: "Captain Sharma",
+        role: "Master Mariner / Charterer",
             email: "captain.sharma@bluesentinel.maritime",
             isDemo: true,
           };
@@ -259,7 +264,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const demoUser: AuthUser = {
             id: "demo_usr_" + Date.now(),
             phone: phone,
-            name: "Captain Arun Sharma",
+            name: "Captain Sharma",
+        role: "Master Mariner / Charterer",
             email: "captain.sharma@bluesentinel.maritime",
             isDemo: true,
           };
@@ -279,7 +285,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const demoUser: AuthUser = {
         id: "demo_usr_" + Date.now(),
         phone: phone,
-        name: "Captain Arun Sharma",
+        name: "Captain Sharma",
+        role: "Master Mariner / Charterer",
         email: "captain.sharma@bluesentinel.maritime",
         isDemo: true,
       };
@@ -313,7 +320,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const demo: AuthUser = {
       id: "demo_captain_01",
       phone,
-      name: "Captain Arun Sharma",
+      name: "Captain Sharma",
+        role: "Master Mariner / Charterer",
       isDemo: true,
     };
     setUser(demo);

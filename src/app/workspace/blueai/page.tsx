@@ -7,6 +7,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase-client";
 import { RAGDocument } from "@/lib/types";
 import { PRELOADED_DOCUMENTS } from "@/lib/rag-knowledge-base";
 import { queryBlueAICopilot, EvidenceCitation } from "@/lib/blueai-copilot";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Bot,
   FileText,
@@ -42,9 +44,7 @@ export default function BlueAIPage() {
   >([
     {
       role: "blueai",
-      text: `Welcome to **BlueAI Document Copilot**. I analyze your uploaded charterparty agreements, vessel specification sheets, and official Indian port notices.
-
-Every answer I deliver is cross-referenced with exact **filename** and **page number citations**. If no documentary evidence exists, I will tell you directly rather than invent facts.`,
+      text: "Welcome to BlueAI Document Copilot. I analyze your uploaded charterparty agreements, vessel specification sheets, and official Indian port notices. Every answer is cross-referenced with exact file names and page citations.",
       timestamp: "Ready",
     },
   ]);
@@ -204,7 +204,7 @@ Every answer I deliver is cross-referenced with exact **filename** and **page nu
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-widest text-coral">
-              BLUEAI COPILOT • DOCUMENT INTELLIGENCE
+              BLUEAI COPILOT & DOCUMENTATION • INTELLIGENCE
             </span>
             <span className="text-xs font-mono text-forest/60 dark:text-paper-light/60">
               SUPABASE STORAGE + PGVECTOR COMPLIANT
@@ -338,7 +338,9 @@ Every answer I deliver is cross-referenced with exact **filename** and **page nu
                         : "bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15 text-forest dark:text-paper-light"
                     }`}
                   >
-                    {msg.text}
+                    <div className="prose prose-sm max-w-none text-forest dark:text-paper-light">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                    </div>
 
                     {/* EVIDENCE CARDS: Document Name + Page Number + Extracted Excerpt */}
                     {msg.citations && msg.citations.length > 0 && (

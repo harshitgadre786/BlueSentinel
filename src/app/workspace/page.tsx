@@ -56,7 +56,7 @@ export default function WorkspaceHomePage() {
       title: "Plan a Voyage",
       href: "/workspace/voyage-planner",
       icon: Ship,
-      tag: "Voyage & Vessel Selection",
+      tag: "Voyage Setup & Vessel Charter",
       accent: "hover:border-coral group-hover:text-coral",
       desc: "Multi-step cargo planning form with 3-vessel deterministic comparison (Vessel A, B, and C), draft checking, and landed cost breakdown in USD/INR.",
     },
@@ -64,7 +64,7 @@ export default function WorkspaceHomePage() {
       title: "Port Compliance",
       href: "/workspace/compliance",
       icon: FileCheck,
-      tag: "Cargo Manifest & Compliance",
+      tag: "Cargo Manifest & Compliance Audit",
       accent: "hover:border-mustard group-hover:text-mustard",
       desc: "Detailed berth draft limits, tidal state verification, mandatory document checklists, and operational risk alerts for Indian ports (Paradip, Kandla, JNPT).",
     },
@@ -72,7 +72,7 @@ export default function WorkspaceHomePage() {
       title: "BlueAI Document Copilot",
       href: "/workspace/blueai",
       icon: Bot,
-      tag: "BlueAI Copilot",
+      tag: "BlueAI Copilot & Documentation",
       accent: "hover:border-coral group-hover:text-coral",
       desc: "Upload vessel specs & port circulars, extract text chunks, and query Gemini RAG intelligence with exact page-level citations.",
     },
@@ -354,7 +354,7 @@ export default function WorkspaceHomePage() {
                     </td>
                     <td className="py-3.5 px-4 font-bold text-forest dark:text-paper-light flex items-center gap-1.5 pt-4">
                       <Ship className="w-3.5 h-3.5 text-coral shrink-0" />
-                      <span>MV Nilgiri Wave</span>
+                      <span>MV Sentinel Carrier</span>
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
                       +$142,000

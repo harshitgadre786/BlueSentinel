@@ -208,10 +208,7 @@ export default function LoginPage() {
     if (result.error) {
       setErrorMsg(result.error);
     } else {
-      setSuccessMsg("Authorized. Redirecting to workspace...");
-      setTimeout(() => {
-        router.push("/workspace");
-      }, 600);
+      router.push("/workspace");
     }
   };
 
@@ -474,7 +471,7 @@ export default function LoginPage() {
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-xs font-mono font-bold text-forest dark:text-paper-light">
-                      Demo OTP: <strong className="text-coral">123456</strong>
+                      Demo Access Code: <strong className="text-coral">123456</strong>
                     </span>
                   </div>
                   <button

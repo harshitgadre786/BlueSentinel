@@ -66,7 +66,7 @@ export default function PortCompliancePage() {
         {/* Header */}
         <div className="space-y-3">
           <span className="text-xs font-mono uppercase tracking-widest text-coral">
-            CARGO MANIFEST & COMPLIANCE • HARBOUR CLEARANCE AUDIT
+            CARGO MANIFEST & COMPLIANCE AUDIT • CLEARANCE
           </span>
           <h1 className="font-serif text-3xl sm:text-5xl font-black text-forest dark:text-paper-light tracking-tight">
             Indian Port Rules & Draft Verification
