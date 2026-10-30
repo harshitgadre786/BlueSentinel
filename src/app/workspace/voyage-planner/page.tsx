@@ -88,10 +88,11 @@ export default function VoyagePlannerPage() {
   const isDomesticVoyage = !!selectedOriginMajor && !!selectedMajorPort;
 
   // 3. Draft Check & Vessel Rejection Check
+  const isTerminalIncompatible = !compatibility.isCompatible;
   const isSelectedVesselRejected = selectedVessel
     ? (selectedVessel.loadedDraft > selectedMajorPort.maxBerthDraftM)
     : false;
-  const isFormBlocked = isSamePort || isSelectedVesselRejected;
+  const isFormBlocked = isSamePort || isTerminalIncompatible || isSelectedVesselRejected;
 
   const effectiveDraft = inputs.targetDraftM || selectedVessel?.loadedDraft || 13.3;
   const maxBerthDraft = selectedMajorPort.maxBerthDraftM;
@@ -625,12 +626,12 @@ export default function VoyagePlannerPage() {
                   <Ship className="w-5 h-5 text-coral" />
                   <span>Available Chartered Vessels for {inputs.cargoType}</span>
                 </h2>
-                <p className="text-xs text-forest/60 dark:text-paper-light/60">
-                  Click a vessel to bind its hydrodynamic parameters (draft, beam, DWT) to this voyage calculation.
+                <p className="text-xs text-forest/70 dark:text-paper-light/70">
+                  Select a ship below to check port fit, fuel costs, and voyage safety.
                 </p>
               </div>
               <span className="text-xs font-mono px-2.5 py-1 rounded bg-forest/10 dark:bg-paper-light/10 text-forest dark:text-paper-light font-bold">
-                {availableVessels.length} VESSELS IN RANGE
+                {availableVessels.length} SHIPS AVAILABLE
               </span>
             </div>
 
@@ -646,11 +647,11 @@ export default function VoyagePlannerPage() {
                     <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <div className="font-bold text-red-700 dark:text-red-300 flex items-center gap-2">
-                        <span>All Available Chartered Vessels Exceed {selectedMajorPort.name} Berth Draft ({selectedMajorPort.maxBerthDraftM}m)</span>
-                        <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-red-600 text-paper-light">UKC RESTRICTED</span>
+                        <span>All Available Ships Too Deep for {selectedMajorPort.name} (Max Allowed Depth: {selectedMajorPort.maxBerthDraftM}m)</span>
+                        <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-red-600 text-paper-light">CANNOT DOCK</span>
                       </div>
                       <p className="text-forest/80 dark:text-paper-light/80 text-[11px] leading-relaxed">
-                        No vessels in the {inputs.cargoType} pool can safely enter the approach fairway at full arrival draft. Select a deep-water Indian port (e.g., Visakhapatnam Port at 18.1m or Kamarajar at 16.0m) or arrange compulsory offshore lightering.
+                        None of the ships for {inputs.cargoType} can safely enter this port without risking getting stuck. Please select a deeper port (like Visakhapatnam at 18.1m) or plan for cargo transfer at sea.
                       </p>
                     </div>
                   </div>
@@ -703,42 +704,42 @@ export default function VoyagePlannerPage() {
                           )}
                         </div>
 
-                        {/* EXPLICIT REJECTION NOTICE OR CLEARANCE */}
+                        {/* EXPLICIT PLAIN-ENGLISH REJECTION NOTICE OR CLEARANCE */}
                         {isVesselDraftExceeded ? (
                           <div className="p-2.5 rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs font-medium leading-relaxed">
-                            ⚠️ Ineligible: Vessel draft ({v.loadedDraft}m) exceeds {selectedMajorPort.name} limit ({selectedMajorPort.maxBerthDraftM}m). Risk of grounding under SOLAS UKC.
+                            ⚠️ Ship Too Deep: This ship needs {v.loadedDraft}m water depth, but {selectedMajorPort.name} only allows {selectedMajorPort.maxBerthDraftM}m. It risks getting stuck.
                           </div>
                         ) : (
                           <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
-                            ✓ Compliant: +{ukcMargin.toFixed(1)}m Under Keel Clearance.
+                            ✓ Safe to Enter: Fits port with {ukcMargin.toFixed(1)}m safety water depth.
                           </div>
                         )}
 
-                        <p className="text-xs text-forest/70 dark:text-paper-light/70 leading-relaxed font-sans line-clamp-2">
+                        <p className="text-xs text-forest/75 dark:text-paper-light/75 leading-relaxed font-sans min-h-[2.5rem]">
                           {v.description}
                         </p>
 
                         <div className="pt-3 border-t border-forest/10 dark:border-paper-light/10 grid grid-cols-2 gap-2 text-xs font-mono text-forest/80 dark:text-paper-light/80">
                           <div>
-                            Draft:{" "}
+                            Depth Needed (Draft):{" "}
                             <strong className={isVesselDraftExceeded ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
                               {v.loadedDraft}m
                             </strong>
                           </div>
-                          <div>Beam: <strong>{v.beam}m</strong></div>
-                          <div>DWT: <strong>{v.dwt.toLocaleString()} MT</strong></div>
-                          <div>Rate: <strong>${v.freightDailyRate.toLocaleString()}/d</strong></div>
+                          <div>Ship Width: <strong>{v.beam}m</strong></div>
+                          <div>Max Cargo (DWT): <strong>{v.dwt.toLocaleString()} Tonnes</strong></div>
+                          <div>Daily Cost: <strong>${v.freightDailyRate.toLocaleString()}/day</strong></div>
                         </div>
 
                         <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-forest/60 dark:text-paper-light/60">
                           <span className="truncate">Port: {v.currentPort}</span>
                           {isVesselDraftExceeded ? (
                             <span className="font-bold text-red-600 dark:text-red-400">
-                              DRAFT INELIGIBLE
+                              Cannot Dock (Too Deep)
                             </span>
                           ) : (
                             <span className="font-bold text-coral">
-                              {isSelected ? "ACTIVE SELECTION" : "CLICK TO BIND"}
+                              {isSelected ? "✓ Selected Ship" : "Select Ship"}
                             </span>
                           )}
                         </div>
@@ -752,8 +753,8 @@ export default function VoyagePlannerPage() {
 
           {/* Submit Action Button */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-forest/15 dark:border-paper-light/15">
-            <div className="text-xs text-forest/60 dark:text-paper-light/60">
-              Deterministic calculations executed across chartered candidates with full draft compliance check.
+            <div className="text-xs text-forest/70 dark:text-paper-light/70">
+              All candidate ships are automatically verified against port depth and safety regulations.
             </div>
 
             <button
@@ -767,12 +768,14 @@ export default function VoyagePlannerPage() {
             >
               <span>
                 {isSamePort
-                  ? "Routing Blocked: Same Port Selected"
+                  ? "Cannot Proceed: Origin and Destination are Identical"
+                  : isTerminalIncompatible
+                  ? "Cannot Proceed: Selected Port Cannot Handle This Cargo"
                   : isSelectedVesselRejected
-                  ? `Submission Blocked: ${selectedVessel?.name || "Vessel"} Exceeds Berth Draft`
-                  : "Compare Vessels & Run Audit"}
+                  ? "Cannot Proceed: Selected Ship Too Deep for Port"
+                  : "Analyze Voyage & Calculate Costs →"}
               </span>
-              <ArrowRight className="w-4 h-4 text-coral" />
+              {!isFormBlocked && <ArrowRight className="w-4 h-4 text-coral" />}
             </button>
           </div>
         </form>
