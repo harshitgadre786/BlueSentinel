@@ -275,6 +275,203 @@ export interface InternationalHub {
   defaultDistanceNM: number;
 }
 
+
+export interface InternationalDestinationPort {
+  id: string;
+  name: string;
+  code: string; // UN/LOCODE
+  country: string;
+  maxBerthDraftM: number;
+  maxLOAM: number;
+  defaultDistanceNM: number;
+}
+
+export const INTERNATIONAL_DESTINATION_PORTS: InternationalDestinationPort[] = [
+  { id: "rotterdam", name: "Port of Rotterdam", code: "NLRTM", country: "Netherlands", maxBerthDraftM: 24.0, maxLOAM: 420.0, defaultDistanceNM: 6850 },
+  { id: "singapore", name: "Port of Singapore", code: "SGSIN", country: "Singapore", maxBerthDraftM: 18.5, maxLOAM: 400.0, defaultDistanceNM: 1650 },
+  { id: "shanghai", name: "Port of Shanghai", code: "CNSHA", country: "China", maxBerthDraftM: 17.5, maxLOAM: 400.0, defaultDistanceNM: 3100 },
+  { id: "jebel_ali", name: "Jebel Ali / Dubai", code: "AEJEA", country: "UAE", maxBerthDraftM: 17.0, maxLOAM: 400.0, defaultDistanceNM: 1550 },
+  { id: "antwerp_bruges", name: "Port of Antwerp-Bruges", code: "BEANR", country: "Belgium", maxBerthDraftM: 17.5, maxLOAM: 400.0, defaultDistanceNM: 6920 },
+  { id: "busan", name: "Port of Busan", code: "KRBUS", country: "South Korea", maxBerthDraftM: 18.0, maxLOAM: 400.0, defaultDistanceNM: 3500 },
+  { id: "los_angeles", name: "Port of Los Angeles", code: "USLAX", country: "USA", maxBerthDraftM: 18.5, maxLOAM: 400.0, defaultDistanceNM: 8200 },
+  { id: "hamburg", name: "Port of Hamburg", code: "DEHAM", country: "Germany", maxBerthDraftM: 15.1, maxLOAM: 400.0, defaultDistanceNM: 7100 },
+  { id: "tanjung_pelepas", name: "Port of Tanjung Pelepas", code: "MYTPP", country: "Malaysia", maxBerthDraftM: 18.5, maxLOAM: 400.0, defaultDistanceNM: 1680 },
+];
+
+export const INTERNATIONAL_MAJOR_PORTS: MajorPort[] = [
+  {
+    id: "rotterdam",
+    name: "Port of Rotterdam",
+    code: "NLRTM",
+    state: "South Holland, Netherlands",
+    coast: "East Coast",
+    maxBerthDraftM: 24.0,
+    maxLOAM: 420.0,
+    distanceFromSingaporeNM: 8288,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Crude Oil", "Containers", "LNG", "Chemicals"],
+    imoStandard: "IMO SOLAS, MARPOL Annex VI ECA (0.10% Sulphur Limit), ISPS Level 1",
+    berthType: "Maasvlakte 2 Deepwater Automated Terminal",
+  },
+  {
+    id: "singapore",
+    name: "Port of Singapore",
+    code: "SGSIN",
+    state: "Singapore",
+    coast: "East Coast",
+    maxBerthDraftM: 18.5,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 0,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Containers", "Bunkers", "Refined Products", "Electronics"],
+    imoStandard: "SOLAS Reg VI/2 VGM Verified, Global 0.50% Sulphur Cap, MPA Circulars",
+    berthType: "Tuas Mega Port & Pasir Panjang Terminals",
+  },
+  {
+    id: "shanghai",
+    name: "Port of Shanghai",
+    code: "CNSHA",
+    state: "Shanghai, China",
+    coast: "East Coast",
+    maxBerthDraftM: 17.5,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 2210,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Manufactured Electronics", "Machinery", "Containers", "Iron Ore"],
+    imoStandard: "China Domestic Emission Control Area (DECA), SOLAS Container Safety",
+    berthType: "Yangshan Deepwater Automated Terminal",
+  },
+  {
+    id: "jebel_ali",
+    name: "Jebel Ali / Dubai",
+    code: "AEJEA",
+    state: "Dubai, UAE",
+    coast: "West Coast",
+    maxBerthDraftM: 17.0,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 3120,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Petroleum Products", "Re-exports", "Aluminium", "General Cargo"],
+    imoStandard: "SOLAS Chapter VI/VII, MARPOL Annex I, DP World Terminal Safety Code",
+    berthType: "DP World Deepwater Container & Bulk Wharves",
+  },
+  {
+    id: "antwerp_bruges",
+    name: "Port of Antwerp-Bruges",
+    code: "BEANR",
+    state: "Flanders, Belgium",
+    coast: "East Coast",
+    maxBerthDraftM: 17.5,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 8350,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Specialty Polymers", "Steel Products", "Pharmaceuticals", "Containers"],
+    imoStandard: "North Sea ECA 0.10% Sulphur Limit, IMO Tier III NOx Regulations",
+    berthType: "Deurganckdock Deepwater Tidal Container Basin",
+  },
+  {
+    id: "busan",
+    name: "Port of Busan",
+    code: "KRBUS",
+    state: "Busan, South Korea",
+    coast: "East Coast",
+    maxBerthDraftM: 18.0,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 2500,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Automobiles", "Ships", "High-Tech Electronics", "Containers"],
+    imoStandard: "Korea Emission Control Area (SOx 0.10%), SOLAS Safe Loading Protocol",
+    berthType: "Busan New Port Deepwater Automated Quays",
+  },
+  {
+    id: "los_angeles",
+    name: "Port of Los Angeles",
+    code: "USLAX",
+    state: "California, USA",
+    coast: "East Coast",
+    maxBerthDraftM: 18.5,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 7800,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Furniture", "Apparel", "Electronics", "Heavy Equipment"],
+    imoStandard: "North American ECA 0.10% Sulphur Limit, CARB Shore Power Mandate",
+    berthType: "Pier 400 Deepwater Container & Bulk Facility",
+  },
+  {
+    id: "hamburg",
+    name: "Port of Hamburg",
+    code: "DEHAM",
+    state: "Hamburg, Germany",
+    coast: "East Coast",
+    maxBerthDraftM: 15.1,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 8450,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Automotive Equipment", "Specialized Machinery", "Chemicals"],
+    imoStandard: "Elbe River Navigation Directive, IMO ECA 0.10% Sulphur Limit",
+    berthType: "HHLA Container Terminal Altenwerder (CTA)",
+  },
+  {
+    id: "tanjung_pelepas",
+    name: "Port of Tanjung Pelepas",
+    code: "MYTPP",
+    state: "Johor, Malaysia",
+    coast: "East Coast",
+    maxBerthDraftM: 18.5,
+    maxLOAM: 400.0,
+    distanceFromSingaporeNM: 30,
+    allowedCargoTypes: [
+      "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
+      "Liquid Bulk / Crude / Chemicals",
+      "Containerized Goods",
+      "Breakbulk / Heavy Lift & Ro-Ro",
+    ],
+    topCommodities: ["Containerized Freight", "Palm Oil Derivatives", "Electronics"],
+    imoStandard: "SOLAS Reg VI/2 VGM Verification, Malacca Strait Traffic Separation Scheme",
+    berthType: "Linear Wharf Deepwater Container Facility",
+  },
+];
+
 export const INTERNATIONAL_LOADING_HUBS: InternationalHub[] = [
   { id: "singapore", name: "Port of Singapore", code: "SGSIN", country: "Singapore", defaultDistanceNM: 1650 },
   { id: "port_hedland", name: "Port Hedland", code: "AUPHE", country: "Australia", defaultDistanceNM: 3680 },
@@ -336,7 +533,12 @@ export function getMajorPort(portIdOrCode: string): MajorPort | undefined {
   if (!portIdOrCode) return undefined;
   const clean = portIdOrCode.toLowerCase().trim();
   
-  // Exact match
+  // Exact match in International or Indian ports
+  const intlMatch = INTERNATIONAL_MAJOR_PORTS.find(
+    (p) => p.id.toLowerCase() === clean || p.code.toLowerCase() === clean
+  );
+  if (intlMatch) return intlMatch;
+
   const direct = INDIAN_MAJOR_PORTS.find(
     (p) => p.id.toLowerCase() === clean || p.code.toLowerCase() === clean
   );

@@ -937,10 +937,51 @@ export function calculateAcousticNoiseDB(speedKnots: number): number {
 }
 
 export function getVoyageDistance(originId: string, destinationPortId: string): number {
-  if (!originId || !destinationPortId) return 1650;
+  if (!originId || !destinationPortId) return 6850;
   
+  const cleanOrigin = originId.toLowerCase().trim();
+  const cleanDest = destinationPortId.toLowerCase().trim();
+
+  // Same port check
+  if (cleanOrigin === cleanDest) return 0;
+
+  // Global distance table for the 9 major international destinations
+  const INTL_DISTANCES: Record<string, { fromIndiaEast: number; fromIndiaWest: number; fromSingapore: number; defaultNM: number }> = {
+    rotterdam: { fromIndiaEast: 6850, fromIndiaWest: 6300, fromSingapore: 8288, defaultNM: 6850 },
+    nlrtm: { fromIndiaEast: 6850, fromIndiaWest: 6300, fromSingapore: 8288, defaultNM: 6850 },
+    singapore: { fromIndiaEast: 1650, fromIndiaWest: 2150, fromSingapore: 0, defaultNM: 1650 },
+    sgsin: { fromIndiaEast: 1650, fromIndiaWest: 2150, fromSingapore: 0, defaultNM: 1650 },
+    shanghai: { fromIndiaEast: 3100, fromIndiaWest: 3800, fromSingapore: 2210, defaultNM: 3100 },
+    cnsha: { fromIndiaEast: 3100, fromIndiaWest: 3800, fromSingapore: 2210, defaultNM: 3100 },
+    jebel_ali: { fromIndiaEast: 1650, fromIndiaWest: 1100, fromSingapore: 3120, defaultNM: 1550 },
+    aejea: { fromIndiaEast: 1650, fromIndiaWest: 1100, fromSingapore: 3120, defaultNM: 1550 },
+    antwerp_bruges: { fromIndiaEast: 6920, fromIndiaWest: 6370, fromSingapore: 8350, defaultNM: 6920 },
+    beanr: { fromIndiaEast: 6920, fromIndiaWest: 6370, fromSingapore: 8350, defaultNM: 6920 },
+    busan: { fromIndiaEast: 3500, fromIndiaWest: 4200, fromSingapore: 2500, defaultNM: 3500 },
+    krbus: { fromIndiaEast: 3500, fromIndiaWest: 4200, fromSingapore: 2500, defaultNM: 3500 },
+    los_angeles: { fromIndiaEast: 8800, fromIndiaWest: 9400, fromSingapore: 7800, defaultNM: 8200 },
+    uslax: { fromIndiaEast: 8800, fromIndiaWest: 9400, fromSingapore: 7800, defaultNM: 8200 },
+    hamburg: { fromIndiaEast: 7100, fromIndiaWest: 6550, fromSingapore: 8450, defaultNM: 7100 },
+    deham: { fromIndiaEast: 7100, fromIndiaWest: 6550, fromSingapore: 8450, defaultNM: 7100 },
+    tanjung_pelepas: { fromIndiaEast: 1680, fromIndiaWest: 2180, fromSingapore: 30, defaultNM: 1680 },
+    mytpp: { fromIndiaEast: 1680, fromIndiaWest: 2180, fromSingapore: 30, defaultNM: 1680 },
+  };
+
   const originMajor = getMajorPort(originId);
   const destMajor = getMajorPort(destinationPortId);
+
+  // Check if destination is one of the international hub ports
+  for (const [key, dist] of Object.entries(INTL_DISTANCES)) {
+    if (cleanDest.includes(key)) {
+      if (cleanOrigin.includes("singapore") || cleanOrigin.includes("sgsin")) {
+        return dist.fromSingapore;
+      }
+      if (originMajor) {
+        return originMajor.coast === "West Coast" ? dist.fromIndiaWest : dist.fromIndiaEast;
+      }
+      return dist.defaultNM;
+    }
+  }
 
   // Case 1: Domestic coastal shipping between two Indian Major Ports
   if (originMajor && destMajor) {

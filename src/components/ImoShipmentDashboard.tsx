@@ -21,7 +21,7 @@ import {
 export default function ImoShipmentDashboard() {
   // Component State
   const [originPortId, setOriginPortId] = useState<string>("singapore");
-  const [destPortId, setDestPortId] = useState<string>("in-paradip");
+  const [destPortId, setDestPortId] = useState<string>("rotterdam");
   const [cargoTypeId, setCargoTypeId] = useState<string>("dry_bulk_imsbc");
   const [selectedVesselId, setSelectedVesselId] = useState<string>("vesselB");
   const [cargoTonnage, setCargoTonnage] = useState<number>(75000);
@@ -105,7 +105,7 @@ export default function ImoShipmentDashboard() {
           </select>
         </div>
 
-        {/* Destination Port */}
+        {/* Destination Port (International Global Hubs Only) */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
             <Navigation className="w-3.5 h-3.5 text-mustard" />
@@ -116,21 +116,16 @@ export default function ImoShipmentDashboard() {
             onChange={(e) => setDestPortId(e.target.value)}
             className="w-full bg-paper-surface dark:bg-paper-dark-surface border border-forest/20 dark:border-paper-light/20 rounded-md p-2.5 text-xs text-forest dark:text-paper-light font-bold focus:outline-none cursor-pointer"
           >
-            <optgroup label="East Coast (Bay of Bengal)">
-              <option value="in-paradip">Paradip Port [INPRT] (Draft: 14.5m)</option>
-              <option value="in-visakhapatnam">Visakhapatnam [INVTZ] (Draft: 18.1m)</option>
-              <option value="in-kamarajar">Kamarajar / Ennore [INENR] (Draft: 16.0m)</option>
-              <option value="in-chennai">Chennai Port [INMAA] (Draft: 15.5m)</option>
-              <option value="in-voc">V.O. Chidambaranar / Tuticorin [INTUT] (Draft: 14.2m)</option>
-              <option value="in-smp-haldia">Haldia Dock [INHAL] (Draft: 10.5m)</option>
-              <option value="in-smp-kolkata">Kolkata Dock [INCCU] (Draft: 8.0m)</option>
-            </optgroup>
-            <optgroup label="West Coast (Arabian Sea)">
-              <option value="in-jnpa">JNPA / Nhava Sheva [INNSA] (Draft: 15.0m)</option>
-              <option value="in-deendayal">Deendayal / Kandla [INIXY] (Draft: 13.0m)</option>
-              <option value="in-cochin">Cochin Port [INCOK] (Draft: 14.5m)</option>
-              <option value="in-mormugao">Mormugao Port [INMRM] (Draft: 14.1m)</option>
-              <option value="in-new-mangalore">New Mangalore [INNML] (Draft: 14.0m)</option>
+            <optgroup label="Major International Global Hubs">
+              <option value="rotterdam">Port of Rotterdam [NLRTM], Netherlands (Draft: 24.0m)</option>
+              <option value="singapore">Port of Singapore [SGSIN], Singapore (Draft: 18.5m)</option>
+              <option value="shanghai">Port of Shanghai [CNSHA], China (Draft: 17.5m)</option>
+              <option value="jebel_ali">Jebel Ali / Dubai [AEJEA], UAE (Draft: 17.0m)</option>
+              <option value="antwerp_bruges">Port of Antwerp-Bruges [BEANR], Belgium (Draft: 17.5m)</option>
+              <option value="busan">Port of Busan [KRBUS], South Korea (Draft: 18.0m)</option>
+              <option value="los_angeles">Port of Los Angeles [USLAX], USA (Draft: 18.5m)</option>
+              <option value="hamburg">Port of Hamburg [DEHAM], Germany (Draft: 15.1m)</option>
+              <option value="tanjung_pelepas">Port of Tanjung Pelepas [MYTPP], Malaysia (Draft: 18.5m)</option>
             </optgroup>
           </select>
         </div>

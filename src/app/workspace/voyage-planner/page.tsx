@@ -16,6 +16,7 @@ import {
 } from "@/lib/maritime-calculator";
 import {
   INDIAN_MAJOR_PORTS,
+  INTERNATIONAL_DESTINATION_PORTS,
   getMajorPort,
   validateTerminalCargoCompatibility,
 } from "@/data/ports";
@@ -49,7 +50,7 @@ export default function VoyagePlannerPage() {
     cargoCategory: "DRY_BULK",
     cargoQuantityMT: 75000,
     originPortId: "singapore",
-    destinationPortId: "in-paradip",
+    destinationPortId: "rotterdam",
     laycanDate: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10),
     fuelPriceUSD: 640,
     usdToInrRate: 83.50,
@@ -326,12 +327,12 @@ export default function VoyagePlannerPage() {
                 </select>
               </div>
 
-              {/* Destination Port */}
+              {/* Destination Port (International Global Hubs Only) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                     <Anchor className="w-3.5 h-3.5 text-coral" />
-                    Destination Port (Indian Gateway)
+                    Destination Port (International Global Hub)
                   </label>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest/10 dark:bg-paper-light/10 font-bold border border-forest/15">
                     MAX DRAFT: {selectedMajorPort.maxBerthDraftM}M
@@ -344,17 +345,10 @@ export default function VoyagePlannerPage() {
                     isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
                   }`}
                 >
-                  <optgroup label="East Coast (Bay of Bengal)">
-                    {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "East Coast").map((p) => (
+                  <optgroup label="Major International Global Hubs">
+                    {INTERNATIONAL_DESTINATION_PORTS.map((p) => (
                       <option key={`dest-${p.id}`} value={p.id}>
-                        {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="West Coast (Arabian Sea)">
-                    {INDIAN_MAJOR_PORTS.filter((p) => p.coast === "West Coast").map((p) => (
-                      <option key={`dest-${p.id}`} value={p.id}>
-                        {p.name} [{p.code}] - Max Draft: {p.maxBerthDraftM}m ({p.state})
+                        {p.name} [{p.code}], {p.country} - Max Draft: {p.maxBerthDraftM}m
                       </option>
                     ))}
                   </optgroup>

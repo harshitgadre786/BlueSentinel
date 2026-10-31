@@ -175,7 +175,7 @@ export function calculateDynamicImoShipment(params: {
   laycanDate?: string;
 }): DynamicVoyageCalculation {
   const originPort = IMO_PORTS[params.originPortId] || IMO_PORTS["singapore"];
-  const destPort = IMO_PORTS[params.destPortId] || IMO_PORTS["in-paradip"];
+  const destPort = IMO_PORTS[params.destPortId] || IMO_PORTS["rotterdam"];
   const cargo = IMO_CARGO_TYPES[params.cargoTypeId] || IMO_CARGO_TYPES["dry_bulk_imsbc"];
 
   // Select suitable vessel or default
