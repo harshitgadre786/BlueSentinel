@@ -30,6 +30,7 @@ import {
   Layers,
   DollarSign,
   ArrowRight,
+  ArrowLeftRight,
   Info,
   ShieldCheck,
   ShieldAlert,
@@ -86,7 +87,21 @@ export default function VoyagePlannerPage() {
   const vesselSpeed = selectedVessel?.averageSpeed || 14.0;
   const transitDays = voyageNM > 0 ? Number((voyageNM / (vesselSpeed * 24)).toFixed(1)) : 0;
   const transitHours = voyageNM > 0 ? Math.round(voyageNM / vesselSpeed) : 0;
-  const isDomesticVoyage = !!selectedOriginMajor && !!selectedMajorPort;
+  
+  // Trade direction classifications
+  const isOriginIndian = inputs.originPortId.startsWith("in-");
+  const isDestIndian = inputs.destinationPortId.startsWith("in-");
+  const isDomesticVoyage = isOriginIndian && isDestIndian;
+  const isExportVoyage = isOriginIndian && !isDestIndian;
+  const isImportVoyage = !isOriginIndian && isDestIndian;
+
+  const handleSwapPorts = () => {
+    setInputs((prev) => ({
+      ...prev,
+      originPortId: prev.destinationPortId,
+      destinationPortId: prev.originPortId,
+    }));
+  };
 
   // 3. Draft Check & Vessel Rejection Check
   const isTerminalIncompatible = !compatibility.isCompatible;
@@ -286,67 +301,107 @@ export default function VoyagePlannerPage() {
                 />
               </div>
 
-              {/* Origin Port (India's Official 12 Major Ports Strictly) */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
-                    <Navigation className="w-3.5 h-3.5 text-mustard" />
-                    Origin Port (LOCODE)
-                  </label>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                    MAJOR PORT OF INDIA
-                  </span>
-                </div>
-                <select
-                  value={inputs.originPortId}
-                  onChange={(e) => setInputs({ ...inputs, originPortId: e.target.value })}
-                  className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold ${
-                    isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
-                  }`}
-                >
-                  <optgroup label="India's 12 Statutory Major Ports">
-                    <option value="in-deendayal">Deendayal Port (Kandla) [INIXY] - Gujarat</option>
-                    <option value="in-mumbai">Mumbai Port [INBOM] - Maharashtra</option>
-                    <option value="in-jnpa">Jawaharlal Nehru Port Authority (JNPA / Nhava Sheva) [INNSA] - Maharashtra</option>
-                    <option value="in-mormugao">Mormugao Port [INMRM] - Goa</option>
-                    <option value="in-new-mangalore">New Mangalore Port [INNML] - Karnataka</option>
-                    <option value="in-cochin">Cochin Port (Kochi) [INCOK] - Kerala</option>
-                    <option value="in-voc">V.O. Chidambaranar Port (Tuticorin) [INTUT] - Tamil Nadu</option>
-                    <option value="in-chennai">Chennai Port [INMAA] - Tamil Nadu</option>
-                    <option value="in-kamarajar">Kamarajar Port (Ennore) [INENR] - Tamil Nadu</option>
-                    <option value="in-visakhapatnam">Visakhapatnam Port [INVTZ] - Andhra Pradesh</option>
-                    <option value="in-paradip">Paradip Port [INPRT] - Odisha</option>
-                    <option value="in-smp-kolkata">Syama Prasad Mookerjee Port (Kolkata / Haldia) [INCCU] - West Bengal</option>
-                  </optgroup>
-                </select>
-              </div>
+            </div>
 
-              {/* Destination Port (International Global Hubs Only) */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
-                    <Anchor className="w-3.5 h-3.5 text-coral" />
-                    Destination Port (Call)
-                  </label>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest/10 dark:bg-paper-light/10 font-bold border border-forest/15">
-                    MAX DRAFT: {selectedMajorPort.maxBerthDraftM}M
-                  </span>
+            {/* Routing & Direction Selection with Swap Control */}
+            <div className="pt-2 border-t border-forest/10 dark:border-paper-light/10">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+                {/* Origin Port */}
+                <div className="lg:col-span-5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
+                      <Navigation className="w-3.5 h-3.5 text-mustard" />
+                      Origin Port (LOCODE)
+                    </label>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest/10 dark:bg-paper-light/10 font-bold border border-forest/15">
+                      {isOriginIndian ? "INDIA MAJOR PORT" : "INTERNATIONAL HUB"}
+                    </span>
+                  </div>
+                  <select
+                    value={inputs.originPortId}
+                    onChange={(e) => setInputs({ ...inputs, originPortId: e.target.value })}
+                    className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold ${
+                      isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
+                    }`}
+                  >
+                    <optgroup label="India (12 Major Ports)">
+                      <option value="in-deendayal">Deendayal / Kandla [INIXY] - Gujarat</option>
+                      <option value="in-mumbai">Mumbai Port [INBOM] - Maharashtra</option>
+                      <option value="in-jnpa">JNPA / Nhava Sheva [INNSA] - Maharashtra</option>
+                      <option value="in-mormugao">Mormugao [INMRM] - Goa</option>
+                      <option value="in-new-mangalore">New Mangalore [INNML] - Karnataka</option>
+                      <option value="in-cochin">Cochin / Kochi [INCOK] - Kerala</option>
+                      <option value="in-voc">V.O. Chidambaranar / Tuticorin [INTUT] - Tamil Nadu</option>
+                      <option value="in-chennai">Chennai Port [INMAA] - Tamil Nadu</option>
+                      <option value="in-kamarajar">Kamarajar / Ennore [INENR] - Tamil Nadu</option>
+                      <option value="in-visakhapatnam">Visakhapatnam [INVTZ] - Andhra Pradesh</option>
+                      <option value="in-paradip">Paradip Port [INPRT] - Odisha</option>
+                      <option value="in-smp-kolkata">Syama Prasad Mookerjee / Kolkata-Haldia [INCCU] - West Bengal</option>
+                    </optgroup>
+                    <optgroup label="Global Hub Ports (International)">
+                      {INTERNATIONAL_DESTINATION_PORTS.map((p) => (
+                        <option key={`orig-${p.id}`} value={p.id}>
+                          {p.name} [{p.code}], {p.country} - Max Draft: {p.maxBerthDraftM}m
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
                 </div>
-                <select
-                  value={inputs.destinationPortId}
-                  onChange={(e) => setInputs({ ...inputs, destinationPortId: e.target.value })}
-                  className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold ${
-                    isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
-                  }`}
-                >
-                  <optgroup label="Major International Global Hubs">
-                    {INTERNATIONAL_DESTINATION_PORTS.map((p) => (
-                      <option key={`dest-${p.id}`} value={p.id}>
-                        {p.name} [{p.code}], {p.country} - Max Draft: {p.maxBerthDraftM}m
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+
+                {/* Swap Direction Button */}
+                <div className="lg:col-span-2 flex items-center justify-center pb-0.5">
+                  <button
+                    type="button"
+                    onClick={handleSwapPorts}
+                    title="Swap Direction (⇄)"
+                    className="w-full py-3 px-3 rounded-md bg-paper-light hover:bg-forest/10 dark:bg-paper-dark dark:hover:bg-paper-light/10 border border-forest/20 dark:border-paper-light/20 text-xs font-bold text-forest dark:text-paper-light transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 group"
+                  >
+                    <ArrowLeftRight className="w-4 h-4 text-coral group-hover:rotate-180 transition-transform duration-300" />
+                    <span>Swap Direction (⇄)</span>
+                  </button>
+                </div>
+
+                {/* Destination Port */}
+                <div className="lg:col-span-5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
+                      <Anchor className="w-3.5 h-3.5 text-coral" />
+                      Destination Port (Call)
+                    </label>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest/10 dark:bg-paper-light/10 font-bold border border-forest/15">
+                      MAX DRAFT: {selectedMajorPort.maxBerthDraftM}M
+                    </span>
+                  </div>
+                  <select
+                    value={inputs.destinationPortId}
+                    onChange={(e) => setInputs({ ...inputs, destinationPortId: e.target.value })}
+                    className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold ${
+                      isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
+                    }`}
+                  >
+                    <optgroup label="India (12 Major Ports)">
+                      <option value="in-deendayal">Deendayal / Kandla [INIXY] - Gujarat</option>
+                      <option value="in-mumbai">Mumbai Port [INBOM] - Maharashtra</option>
+                      <option value="in-jnpa">JNPA / Nhava Sheva [INNSA] - Maharashtra</option>
+                      <option value="in-mormugao">Mormugao [INMRM] - Goa</option>
+                      <option value="in-new-mangalore">New Mangalore [INNML] - Karnataka</option>
+                      <option value="in-cochin">Cochin / Kochi [INCOK] - Kerala</option>
+                      <option value="in-voc">V.O. Chidambaranar / Tuticorin [INTUT] - Tamil Nadu</option>
+                      <option value="in-chennai">Chennai Port [INMAA] - Tamil Nadu</option>
+                      <option value="in-kamarajar">Kamarajar / Ennore [INENR] - Tamil Nadu</option>
+                      <option value="in-visakhapatnam">Visakhapatnam [INVTZ] - Andhra Pradesh</option>
+                      <option value="in-paradip">Paradip Port [INPRT] - Odisha</option>
+                      <option value="in-smp-kolkata">Syama Prasad Mookerjee / Kolkata-Haldia [INCCU] - West Bengal</option>
+                    </optgroup>
+                    <optgroup label="Global Hub Ports (International)">
+                      {INTERNATIONAL_DESTINATION_PORTS.map((p) => (
+                        <option key={`dest-${p.id}`} value={p.id}>
+                          {p.name} [{p.code}], {p.country} - Max Draft: {p.maxBerthDraftM}m
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -380,10 +435,20 @@ export default function VoyagePlannerPage() {
                         <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                         <span className="truncate">Coastal Cabotage</span>
                       </>
-                    ) : (
+                    ) : isExportVoyage ? (
                       <>
                         <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
-                        <span className="truncate">International Import</span>
+                        <span className="truncate">Export (India ➔ Hub)</span>
+                      </>
+                    ) : isImportVoyage ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-cyan-500 shrink-0"></span>
+                        <span className="truncate">Import (Hub ➔ India)</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
+                        <span className="truncate">Cross-Trade Hub</span>
                       </>
                     )}
                   </span>

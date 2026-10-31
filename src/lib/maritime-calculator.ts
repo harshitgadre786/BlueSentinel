@@ -970,7 +970,7 @@ export function getVoyageDistance(originId: string, destinationPortId: string): 
   const originMajor = getMajorPort(originId);
   const destMajor = getMajorPort(destinationPortId);
 
-  // Check if destination is one of the international hub ports
+  // Case 1: Indian Major Port -> International Hub Port (Export)
   for (const [key, dist] of Object.entries(INTL_DISTANCES)) {
     if (cleanDest.includes(key)) {
       if (cleanOrigin.includes("singapore") || cleanOrigin.includes("sgsin")) {
@@ -978,6 +978,19 @@ export function getVoyageDistance(originId: string, destinationPortId: string): 
       }
       if (originMajor) {
         return originMajor.coast === "West Coast" ? dist.fromIndiaWest : dist.fromIndiaEast;
+      }
+      return dist.defaultNM;
+    }
+  }
+
+  // Case 2: International Hub Port -> Indian Major Port (Import)
+  for (const [key, dist] of Object.entries(INTL_DISTANCES)) {
+    if (cleanOrigin.includes(key)) {
+      if (cleanDest.includes("singapore") || cleanDest.includes("sgsin")) {
+        return dist.fromSingapore;
+      }
+      if (destMajor) {
+        return destMajor.coast === "West Coast" ? dist.fromIndiaWest : dist.fromIndiaEast;
       }
       return dist.defaultNM;
     }
