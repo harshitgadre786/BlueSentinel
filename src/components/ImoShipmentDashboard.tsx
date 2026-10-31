@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 
 export default function ImoShipmentDashboard() {
-  // Component State
-  const [originPortId, setOriginPortId] = useState<string>("singapore");
+  // Component State - Defaults to JNPA [INNSA] as Origin, Rotterdam [NLRTM] as Destination
+  const [originPortId, setOriginPortId] = useState<string>("in-jnpa");
   const [destPortId, setDestPortId] = useState<string>("rotterdam");
   const [cargoTypeId, setCargoTypeId] = useState<string>("dry_bulk_imsbc");
   const [selectedVesselId, setSelectedVesselId] = useState<string>("vesselB");
@@ -75,41 +75,37 @@ export default function ImoShipmentDashboard() {
 
       {/* Reactive Dropdown Controls Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5 rounded-xl bg-paper-light dark:bg-paper-dark border border-forest/15 dark:border-paper-light/15">
-        {/* Origin Port */}
+        {/* Origin Port (India's Official 12 Major Ports Strictly) */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
             <Anchor className="w-3.5 h-3.5 text-coral" />
-            <span>Origin Port</span>
+            <span>Origin Port (LOCODE)</span>
           </label>
           <select
             value={originPortId}
             onChange={(e) => setOriginPortId(e.target.value)}
             className="w-full bg-paper-surface dark:bg-paper-dark-surface border border-forest/20 dark:border-paper-light/20 rounded-md p-2.5 text-xs text-forest dark:text-paper-light font-bold focus:outline-none cursor-pointer"
           >
-            <optgroup label="International Supply Hubs">
-              <option value="singapore">Singapore [SGSIN] - Jurong / PSA</option>
-              <option value="port_hedland">Port Hedland [AUPHE] - Australia</option>
-              <option value="richards_bay">Richards Bay [ZARCB] - South Africa</option>
-              <option value="ras_laffan">Ras Laffan [QARLF] - Qatar LNG Hub</option>
-              <option value="fujairah">Fujairah [AEFJR] - UAE Bunkers</option>
-              <option value="rotterdam">Rotterdam [NLRTM] - Europe</option>
-            </optgroup>
-            <optgroup label="Indian Coastal Major Ports">
-              <option value="in-paradip">Paradip Port [INPRT]</option>
-              <option value="in-visakhapatnam">Visakhapatnam [INVTZ]</option>
-              <option value="in-chennai">Chennai Port [INMAA]</option>
-              <option value="in-jnpa">JNPA / Nhava Sheva [INNSA]</option>
-              <option value="in-cochin">Cochin Port [INCOK]</option>
-              <option value="in-deendayal">Deendayal / Kandla [INIXY]</option>
-            </optgroup>
+            <option value="in-deendayal">Deendayal Port (Kandla) [INIXY] - Gujarat</option>
+            <option value="in-mumbai">Mumbai Port [INBOM] - Maharashtra</option>
+            <option value="in-jnpa">Jawaharlal Nehru Port Authority (JNPA / Nhava Sheva) [INNSA] - Maharashtra</option>
+            <option value="in-mormugao">Mormugao Port [INMRM] - Goa</option>
+            <option value="in-new-mangalore">New Mangalore Port [INNML] - Karnataka</option>
+            <option value="in-cochin">Cochin Port (Kochi) [INCOK] - Kerala</option>
+            <option value="in-voc">V.O. Chidambaranar Port (Tuticorin) [INTUT] - Tamil Nadu</option>
+            <option value="in-chennai">Chennai Port [INMAA] - Tamil Nadu</option>
+            <option value="in-kamarajar">Kamarajar Port (Ennore) [INENR] - Tamil Nadu</option>
+            <option value="in-visakhapatnam">Visakhapatnam Port [INVTZ] - Andhra Pradesh</option>
+            <option value="in-paradip">Paradip Port [INPRT] - Odisha</option>
+            <option value="in-smp-kolkata">Syama Prasad Mookerjee Port (Kolkata / Haldia) [INCCU] - West Bengal</option>
           </select>
         </div>
 
-        {/* Destination Port (International Global Hubs Only) */}
+        {/* Destination Port (Strictly International Global Hubs) */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
             <Navigation className="w-3.5 h-3.5 text-mustard" />
-            <span>Destination Port</span>
+            <span>Destination Port (Call)</span>
           </label>
           <select
             value={destPortId}

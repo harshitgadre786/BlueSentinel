@@ -49,7 +49,7 @@ export default function VoyagePlannerPage() {
     cargoType: "Dry Bulk (Thermal Coal / Iron Ore / Grain)",
     cargoCategory: "DRY_BULK",
     cargoQuantityMT: 75000,
-    originPortId: "singapore",
+    originPortId: "in-jnpa",
     destinationPortId: "rotterdam",
     laycanDate: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10),
     fuelPriceUSD: 640,
@@ -286,43 +286,37 @@ export default function VoyagePlannerPage() {
                 />
               </div>
 
-              {/* Origin Port */}
+              {/* Origin Port (India's Official 12 Major Ports Strictly) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                     <Navigation className="w-3.5 h-3.5 text-mustard" />
-                    Origin Port (Loading Hub)
+                    Origin Port (LOCODE)
                   </label>
-                  {selectedOriginMajor ? (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                      COASTAL HUB
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 font-bold border border-blue-500/20">
-                      INTL HUB
-                    </span>
-                  )}
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                    MAJOR PORT OF INDIA
+                  </span>
                 </div>
                 <select
                   value={inputs.originPortId}
                   onChange={(e) => setInputs({ ...inputs, originPortId: e.target.value })}
-                  className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-medium ${
+                  className={`w-full bg-paper-light dark:bg-paper-dark border rounded-md p-3 text-sm text-forest dark:text-paper-light focus:outline-none focus:border-forest dark:focus:border-paper-light cursor-pointer font-bold ${
                     isSamePort ? "border-red-500 ring-2 ring-red-500/30" : "border-forest/20 dark:border-paper-light/20"
                   }`}
                 >
-                  <optgroup label="Domestic Indian Ports (Coastal Shipping)">
-                    {INDIAN_MAJOR_PORTS.map((p) => (
-                      <option key={`origin-${p.id}`} value={p.id}>
-                        {p.name} [{p.code}] - Coastal Berth ({p.state})
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="International Loading Hubs">
-                    {INTERNATIONAL_LOADING_HUBS.map((hub) => (
-                      <option key={`origin-${hub.id}`} value={hub.id}>
-                        {hub.name} [{hub.code}] - {hub.country}
-                      </option>
-                    ))}
+                  <optgroup label="India's 12 Statutory Major Ports">
+                    <option value="in-deendayal">Deendayal Port (Kandla) [INIXY] - Gujarat</option>
+                    <option value="in-mumbai">Mumbai Port [INBOM] - Maharashtra</option>
+                    <option value="in-jnpa">Jawaharlal Nehru Port Authority (JNPA / Nhava Sheva) [INNSA] - Maharashtra</option>
+                    <option value="in-mormugao">Mormugao Port [INMRM] - Goa</option>
+                    <option value="in-new-mangalore">New Mangalore Port [INNML] - Karnataka</option>
+                    <option value="in-cochin">Cochin Port (Kochi) [INCOK] - Kerala</option>
+                    <option value="in-voc">V.O. Chidambaranar Port (Tuticorin) [INTUT] - Tamil Nadu</option>
+                    <option value="in-chennai">Chennai Port [INMAA] - Tamil Nadu</option>
+                    <option value="in-kamarajar">Kamarajar Port (Ennore) [INENR] - Tamil Nadu</option>
+                    <option value="in-visakhapatnam">Visakhapatnam Port [INVTZ] - Andhra Pradesh</option>
+                    <option value="in-paradip">Paradip Port [INPRT] - Odisha</option>
+                    <option value="in-smp-kolkata">Syama Prasad Mookerjee Port (Kolkata / Haldia) [INCCU] - West Bengal</option>
                   </optgroup>
                 </select>
               </div>
@@ -332,7 +326,7 @@ export default function VoyagePlannerPage() {
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold uppercase tracking-wider text-forest/80 dark:text-paper-light/80 flex items-center gap-1.5">
                     <Anchor className="w-3.5 h-3.5 text-coral" />
-                    Destination Port (International Global Hub)
+                    Destination Port (Call)
                   </label>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-forest/10 dark:bg-paper-light/10 font-bold border border-forest/15">
                     MAX DRAFT: {selectedMajorPort.maxBerthDraftM}M
